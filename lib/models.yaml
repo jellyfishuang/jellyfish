@@ -1,0 +1,13 @@
+# Model tier → Claude model ID
+# 對應 design-summary 第 17.3 節
+
+cheap: claude-haiku-4-5-20251001
+mid:   claude-sonnet-4-6
+top:   claude-opus-4-7
+
+# 覆寫順序（低 → 高）：
+# 1. Recipe 內 role 預設 tier（recipe yaml 設）
+# 2. Init 時使用者覆寫（寫進 .framework/.initialized.tier_overrides）
+# 3. 使用者手改 .claude/agents/{role}.md frontmatter
+
+# Main session model 不受 framework 控制（使用者自選 Claude Code 啟動 model）

@@ -1,0 +1,158 @@
+# Recipe: dev-team
+# 開發場景（寫 code / 修 bug / 新功能 / 補測試）
+# 對應 design-summary 第 7 節 + empire v3 dev-workflow archetype
+
+name: dev-team
+description: |
+  開發場景套裝（planning + engineering + testing 三階段、reviewer 機械審核、worktree 隔離）。
+  注意：所有 stage 預設 `second_review: true`（雙 pass：checklist + adversarial）——code/plan/tests
+  最容易被 producer self-narrative 框住，雙過值得。**成本警示**：每 stage 2x reviewer cost；
+  full pipeline 全開累計 6x；adversarial cap=2 在多輪 fail 時會觸發 escalation `adversarial-deadlock`，
+  使用者可改個別 stage `second_review: false` 降回單 pass。
+version: 1.1.0
+
+roles:
+  - planner
+  - planning-reviewer
+  - engineer
+  - code-reviewer
+  - test-writer
+  - test-reviewer
+
+skills:
+  - code-review-checklist
+  - git-diff-analysis
+
+# 預設 .framework/pipeline.yaml 內容（init 時複製到專案 root 的 .framework/pipeline.yaml）
+default_pipeline:
+  pipelines:
+    new_feature:
+      description: 新功能（規劃 + 實作 + 補測試）
+      stages:
+        planning:
+          role: planner
+          reviewer: planning-reviewer
+          second_review: true       # 雙 pass：checklist + adversarial
+          depends_on: []
+        engineering:
+          role: engineer
+          reviewer: code-reviewer
+          second_review: true
+          depends_on: [planning]
+        testing:
+          role: test-writer
+          reviewer: test-reviewer
+          second_review: true
+          depends_on: [engineering]
+    tdd_feature:
+      description: TDD 風格（規劃 → 先寫測試 → 實作；engineer 跑現有測試到 green）
+      stages:
+        planning:
+          role: planner
+          reviewer: planning-reviewer
+          second_review: true
+          depends_on: []
+        testing:
+          role: test-writer
+          reviewer: test-reviewer
+          second_review: true
+          depends_on: [planning]
+        engineering:
+          role: engineer
+          reviewer: code-reviewer
+          second_review: true
+          depends_on: [testing]
+    bug_fix:
+      description: 修 bug（直接 engineering，無正式規劃）
+      stages:
+        engineering:
+          role: engineer
+          reviewer: code-reviewer
+          second_review: true
+          depends_on: []
+    planning_only:
+      description: 只規劃不實作（產出方案文件）
+      stages:
+        planning:
+          role: planner
+          reviewer: planning-reviewer
+          second_review: true
+          depends_on: []
+    backfill_tests:
+      description: 為既存 code 補測試（無 planning / engineering，只跑 testing）
+      stages:
+        testing:
+          role: test-writer
+          reviewer: test-reviewer
+          second_review: true
+          depends_on: []
+  default: new_feature
+  review_rounds_override: null    # 用 review-loop.md 預設
+
+default_trust_mode: standard       # 開發場景通常需要安裝測試依賴等
+
+default_worktree: true             # 每 sub-brief 一個 worktree
+
+memory_categories:
+  - planning
+  - engineering
+  - code-review
+  - testing
+
+# Init 時的客製問題（追加到 init Step 3）
+init_questions:
+  - id: test_command
+    prompt: 本專案的測試指令？（會加進 reviewer 與 test-writer 的 Bash 白名單）
+    default: ""
+    examples: ["pytest", "go test ./...", "npm test", "cargo test"]
+  - id: coverage_command
+    prompt: 本專案的覆蓋率指令？（test-reviewer 用此檢查覆蓋率達標）
+    default: ""
+    examples: ["pytest --cov=src --cov-report=term", "go test -cover ./...", "jest --coverage"]
+  - id: coverage_threshold
+    prompt: 覆蓋率閾值（plan 範圍內檔案、test-reviewer 預設）？
+    default: "80"
+    examples: ["70", "80", "90"]
+  - id: lint_command
+    prompt: 本專案的 lint 指令？
+    default: ""
+    examples: ["ruff check .", "go vet ./...", "eslint ."]
+  - id: language_stack
+    prompt: 主要技術棧（會寫進 engineer / planner / test-writer 的 codex）？
+    default: ""
+    examples: ["Python 3.12 + FastAPI", "Go 1.22 + Gin", "TypeScript + Next.js"]
+
+# Init 時建議的 Bash 白名單追加（基於 init_questions 答案動態組裝）
+bash_extra_allow_template:
+  - "{test_command}"
+  - "{coverage_command}"
+  - "{lint_command}"
+  - git diff
+  - git log --oneline
+  - git show
+
+# Codex 草稿 bootstrap 提示（init 時 main 對每 role 訪談用）
+codex_bootstrap_prompts:
+  planner:
+    - 本專案的架構大方向？（單體 / 微服務 / 函式庫）
+    - 過去常見的踩坑點？
+    - 必須遵守的命名 / 結構慣例？
+  engineer:
+    - 本專案的測試慣例？（per-module / 全 monorepo / e2e 怎麼跑）
+    - 程式風格指引？
+    - 部署 / build 的特殊要求？
+  code-reviewer:
+    - Review 時必看的具體事項？
+    - 已知的性能 / 安全敏感區？
+  planning-reviewer:
+    - Plan 必含的章節？
+    - 規格書品質的歷史問題？
+  test-writer:
+    - 測試檔的命名 / 位置慣例？（tests/ 目錄 / *_test.go / *.spec.ts）
+    - 整合測試的 fixture 機制？（DB seed / docker-compose / testcontainers）
+    - 慣用斷言函式庫？（pytest / testify / vitest）
+    - 哪些區塊歷史上難測？（需 mock 的邊界 / 不該 mock 的核心）
+  test-reviewer:
+    - 覆蓋率閾值與例外（哪些檔案可豁免）？
+    - 過去出現過的 false-pass 模式？（例如過度 mock / 弱斷言）
+    - 整合測試的 isolation 要求？（DB rollback / parallel-safe）
