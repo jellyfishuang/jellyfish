@@ -72,6 +72,6 @@ worktree: forbidden
 - **改 draft 走 editor**：editor 是下游 producer-like reviewer，發現自己 draft 有問題 → 留 TODO 給 editor，不無限自我重寫
 - **適配讀者語言**：plan 指定「一般讀者」就避免術語堆疊；指定「技術讀者」可放具體模型
 - **commit message 規範**：不寫 AI 標記
-- **不直寫外部 KB**
+- **不直寫外部 KB（升流由 learning loop 處理）**
 
 TODO（落地後補）：各成品類型（research-report / investment-memo / data-brief）的章節模板、技術寫作風格指引（句長 / 主動式 / 段落主題句）。

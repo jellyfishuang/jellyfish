@@ -39,6 +39,13 @@ pipelines:
                                  #        適合：高品質要求、code/plan 易被 producer self-narrative 框住
                                  # false（預設）= 單 pass。**注意：reviewer.md §5.x 對抗式視角仍會跑**——
                                  #        single-pass 已含一個 reviewer 內的對抗式檢查；second_review 只是再加 fresh 視角的第二人 review
+                                 #
+                                 # 物件寫法（size gating，避免小改動被過度工程化，見 review-loop §3.4）：
+                                 #   second_review:
+                                 #     enabled: true
+                                 #     skip_below_lines: 10   # 本次 diff 淨改動 < 10 行 → 跳過 adversarial second pass
+                                 #     skip_single_file: true # （可選）僅動 1 檔時更傾向跳過
+                                 # `second_review: true` 等義於 {enabled: true}（無 size gate，維持相容）
         # 可選：此 stage 額外載入 skill（疊加 role frontmatter 的 skills）
         skills_extra: []
         # 可選：此 stage 是否需要 worktree（覆寫 role.worktree）
@@ -172,6 +179,7 @@ triage_hints:
 | `review_rounds.same_role_max` | 1-5 整數 |
 | `review_rounds.total_max` | ≥ same_role_max |
 | `review_rounds.explore_max` | 1-3 整數 |
+| `second_review` | `false` / `true`（bool）或物件 `{enabled: bool, skip_below_lines?: 正整數, skip_single_file?: bool}` |
 | `bash_extra_allow` | 字串陣列；不含 deny 清單項目 |
 
 驗證失敗 → init 拒寫，提示具體錯誤。

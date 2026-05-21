@@ -78,6 +78,6 @@ worktree: forbidden
 - **不擅自加 dependency 評論**：依賴版本是否過時超出本 role 範圍（交 code-reviewer / security review）
 - **diagram 必驗證**：寫的 A → B 邊必有 Grep evidence 支持
 - **commit message 規範**：不寫 AI 標記
-- **不直寫外部 KB**
+- **不直寫外部 KB（升流由 learning loop 處理）**
 
 TODO（落地後補）：常見 stack（Go / Python / Node / Rust）的探勘 heuristic、Mermaid diagram 模板。

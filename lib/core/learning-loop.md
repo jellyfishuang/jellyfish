@@ -186,15 +186,17 @@ Brief 進行中各 verdict 的 `suggest_*` 欄位都已彙整在 `.framework/bri
 來源：本次 code-reviewer Round 1 因從 root 跑 pytest 誤判
 類別：code-review
 
-(y) 寫入
+(y) 寫入 local
 (n) 略過
 (edit) 我先改一下文字再寫入
+(m) 寫 local + 升流外部 KB    ← 僅當 .initialized knowledge_base.promote=true 時顯示
 ```
 
 使用者可：
 - y / n 對每項
 - edit 改文字後寫入
 - 一次 yes-all（接受所有提議）
+- **m（升流外部 KB，僅 knowledge_base.promote=true）**：lessons / patterns / preferences 適用。main 依「跨 repo 可攜」準則預推薦——不綁本 repo 檔名/service/函式、換 repo/語言仍成立、是會重現的坑或方法論 → 標建議升流；綁死本 repo 具體程式碼的只給 y。`preferences` 預設推 m。選 m → main 蒸餾改寫後寫入 KB（見 §8.5），預覽可 edit
 
 對 codex 提議特別嚴格：
 
@@ -292,6 +294,26 @@ Brief 進行中各 verdict 的 `suggest_*` 欄位都已彙整在 `.framework/bri
 4. 顯示給使用者最終路徑，提醒可後續編輯
 ```
 
+### 8.5 升流外部知識庫（promote，僅 knowledge_base.promote=true）
+
+對 Step 4 選 `(m)` 的 `lessons / patterns / preferences`，main 寫完 local 後額外升流至 `.framework/.initialized` 的 `knowledge_base.path` 指向的外部 KB：
+
+```
+1. 讀 .initialized 取 knowledge_base；不存在或 promote != true → 跳過整個升流
+2. 蒸餾改寫：剝掉 repo-specific 識別碼（檔名 / service / 函式 / 行號），
+   留「通則 + backstory」。backstory 保留出處（source_brief + repo）
+3. 去重（沿用該 KB 自身的寫入 / ingest 慣例）：
+   - 已有等義條目 → 不重複寫，必要時補 backstory / 連結
+   - 與既有矛盾 → callout 標記，不靜默覆蓋
+4. 落點依**該 KB 自身的 schema 與寫入慣例**（讀 `knowledge_base.path` 下的 schema 說明，如其 CLAUDE.md / 模板）：
+   分類標籤、聚合方式、frontmatter 欄位都由該 KB 定義，框架不假設特定結構
+5. 更新 KB 對應索引 + append KB log（沿用該 KB 自身的寫入後慣例）
+```
+
+鐵律：
+- **只升流 `lessons / patterns / preferences`**；`sessions` / `codex` / `skill` 不升流
+- **local 永遠保留**：升流是 promotion 不是搬移——role 跑 brief 讀的仍是 local
+
 ---
 
 ## 9. 失敗版學習迴圈（brief failed）
@@ -330,8 +352,14 @@ Append-only。淘汰是顯式 review，不能 main 自決悄悄改。
 ### 11.4 Provenance 必填
 每個寫入的條目都有 source_brief / created_at（frontmatter）+ 對 codex 還有 Confirmed / Confidence。
 
-### 11.5 不寫外部 KB
-學習迴圈與外部知識庫解耦。外部 KB 的寫入由使用者另外透過該 KB 自己的入口觸發。
+### 11.5 外部知識庫（KB sink）：預設解耦、可 opt-in 升流
+學習迴圈**預設只寫 local `.framework/memory`**，不依賴任何外部 KB——沒接 KB 的 repo 行為不變。
+
+若 repo 在 `.framework/.initialized` 宣告 `knowledge_base` block：
+- `promote: true` → brief 收尾經 Step 4 `(m)` 批准的 `lessons / patterns / preferences` 蒸餾升流至 KB（見 §8.5）
+- `recall: true` → 使用者可 `/framework-recall` 唯讀查 KB 參考其他 repo（見 commands/framework-recall.md）
+
+解耦不變式仍在：① 不自動倒（升流必經 Step 4 `(m)` 批准）② 不硬依賴（沒 KB 也自給自足）。KB 的手動寫入由該 KB 自己的入口處理（與框架無關）。
 
 ---
 

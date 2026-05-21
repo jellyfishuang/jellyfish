@@ -79,6 +79,6 @@ worktree: forbidden
 - **改動必紀錄**：changelog.md 每改動有對應條目（refactor 級重排可一條摘要）
 - **風格遵 codex**：依 .framework/codex/editor.md 指引（句長 / 主動式 / 段落結構）
 - **commit message 規範**：不寫 AI 標記
-- **不直寫外部 KB**
+- **不直寫外部 KB（升流由 learning loop 處理）**
 
 TODO（落地後補）：分讀者層級的編修 checklist（執行層摘要 / 技術深度報告 / 一般讀者 brief 各別）、changelog 分類 enum（grammar / structure / citation / clarity / pacing）。

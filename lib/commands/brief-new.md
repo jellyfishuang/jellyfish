@@ -106,6 +106,7 @@ allowed_tools: Read, Write, Edit, Glob, Grep, Task
 - 開好 brief 後：等 main 跑完 Explore Step 2-5 → 進入 awaiting_approval → 使用者 `/brief-approve`
 - 中途取消：`/brief-cancel`
 - 查狀態：`/brief-status`
+- 想參考其他 repo 的做法：`/framework-recall <主題>`（需已連接外部 KB；main 會把結果折進本 brief 的 intel-pack）
 
 ## 相關文件
 

@@ -1,17 +1,25 @@
-# Multi-Agent Team Framework — 設計總覽 v1
+# Multi-Agent Team Framework — 設計總覽
 
-> 接手 agent 的主要閱讀入口。閱讀順序：本文 → 有疑問再翻 `D:\Claude\empire\design-summary-v3.md`（前身 v3）。
+> 框架設計的完整入口文件。概念總覽見 [`../README.md`](../README.md)。
 >
-> 最後更新：2026-05-06
+> 版本：0.2.0 · 最後更新：2026-05-21 · 逐版變更見 [`../CHANGELOG.md`](../CHANGELOG.md)
 >
-> 本框架是 empire v1-v3 的繼承者，吸收 OneManCompany（arXiv:2604.22446）的 Talent + E²R 概念。SLIDERS（arXiv:2604.22294）相關的結構化儲存暫緩，預留 frontmatter 接口。
+> **0.2.0 修訂摘要**（基於約 10 個 dev-team brief 的實戰回饋）：
+> - **深度 review 提前**：code-reviewer 對抗式新增「架構視角」+ checklist 加 plan↔code 對齊 / 跨檔 wiring / 註解 三項機械檢查（攔截過去拖到 holistic / 逐行 review 才爆的架構、命名 drift、wiring 漏接）。
+> - **Plan 防肥分層**：planner 強制「架構決策層 vs 實作細節層」分離、plan 是當前狀態規格非 changelog、引用 architecture.md 必 grep 驗證、驗收條件分 [靜態] / [runtime]。
+> - **Micro-brief 輕量化**：control-plane 加規模 triage（小改走 bug_fix）+ review-loop §3.4 size-based 對抗式豁免 + pipeline `second_review` 物件寫法。
+> - **Test 策略**：engineer 禁自寫自測（球員兼裁判）、test-writer 獨立 session + case 數機器算、整合 / wire 行為標明 unit test 不涵蓋需 localTest。
+> - **註解紀律**：engineer 預設不寫註解（只在 code 難懂 / 特殊商業邏輯才寫 WHY，禁 WHAT）、reviewer 同步審註解正確性。
+> - **可插拔外部 KB sink（opt-in）**：learning loop 經批准的 lessons / patterns / preferences 可蒸餾升流外部 KB、`/framework-recall` 唯讀查跨 repo 參考；沒接 KB 的 repo 行為不變（解耦維持為預設）。詳見 §12.3。
+>
+> 本框架歷經數次內部設計迭代提煉而成，吸收 OneManCompany（arXiv:2604.22446）的 Talent + E²R 概念。SLIDERS（arXiv:2604.22294）相關的結構化儲存暫緩，預留 frontmatter 接口。
 
 ---
 
 ## 目錄
 
 0. [文件目的](#0-文件目的)
-1. [與 empire v1-v3 的關係](#1-與-empire-v1-v3-的關係)
+1. [設計沿革](#1-設計沿革)
 2. [核心哲學](#2-核心哲學)
 3. [四層抽象（Role / Skill / Codex / Directive）](#3-四層抽象role--skill--codex--directive)
 4. [架構總覽](#4-架構總覽)
@@ -28,7 +36,7 @@
 15. [Init 流程與 Recipes](#15-init-流程與-recipes)
 16. [Slash Commands 與啟用機制](#16-slash-commands-與啟用機制)
 17. [權限 / Trust Modes / Tier / Worktree](#17-權限--trust-modes--tier--worktree)
-18. [與 empire v3 的 diff](#18-與-empire-v3-的-diff)
+18. [相對前一代的變更](#18-相對前一代的變更)
 19. [仍開放的細節](#19-仍開放的細節)
 20. [建議下一步](#20-建議下一步)
 21. [給接手 agent 的備註](#21-給接手-agent-的備註)
@@ -39,10 +47,11 @@
 
 定義一套可攜的 multi-agent team framework，供任何 Claude Code 專案 clone 進來、執行 init 後即可使用。
 
-實際使用情境（沿用 empire 的三個專案）：
-- **A 專案（金融顧問）**：主 session 是金融專家，抓資料 → 分析 → 出報告
-- **B 專案（Go 微服務群開發）**：主 session 是開發指揮，產出 code
-- **C 專案（生活助理 / Telegram 觸發）**：主 session 接外部訊息，做跨域助理
+典型使用情境（對應內建 recipe）：
+- **軟體開發**：主 session 是開發指揮，規劃 → 工程 → 審查，產出 code
+- **研究 / 顧問**：主 session 是領域專家，抓資料 → 分析 → 出報告
+- **資料分析**：主 session 處理資料集，分析 → 結論
+- **通用助理**：主 session 接外部訊息 / 檔案投遞，做跨域協助
 
 核心需求：
 - Clone framework 進專案後，使用者執行 `/framework-init` 進行對話式設定
@@ -53,30 +62,32 @@
 
 ---
 
-## 1. 與 empire v1-v3 的關係
+## 1. 設計沿革
 
-| 階段 | 文件 | 核心 |
-|---|---|---|
-| empire v1 | `D:\Claude\empire\design-summary.md` | 6 角色（Haiku 前台、Opus 中樞、規劃 / 工程主管 + 規劃師 / 工程師），假設 nested Task 可用 |
-| empire v2 | `D:\Claude\empire\design-summary-v2.md` | 撞到「subagent 不能再 spawn subagent」的技術牆 → Control Plane Pattern，4 個固定 subagent |
-| empire v3 | `D:\Claude\empire\design-summary-v3.md` | 框架不預定角色，改 archetype 整包 + init 生成 |
-| **本框架 v1**（取代 empire 演進） | 本文件 | **Talent + E²R + Recipe**（OMC 論文吸收後的下一步） |
+本框架歷經數次內部設計迭代演進而成，關鍵轉折：
 
-本框架**不是 empire v4**，而是基於 empire v3 哲學再做一次跳躍。empire/ 整個目錄保留為歷史，不再更新。
+| 迭代 | 核心 |
+|---|---|
+| 初代 | 多階層角色（前台 / 中樞 / 規劃 / 工程主管），假設 nested Task 可用 |
+| 第二代 | 撞到「subagent 不能再 spawn subagent」的技術牆 → 確立 Control Plane Pattern（固定數個 leaf subagent） |
+| 第三代 | 框架不預定角色，改 archetype 整包 + init 生成 |
+| **本框架** | **Talent + E²R + Recipe**——角色拆成可組合單元，受 OneManCompany 論文啟發的下一步 |
 
-### 從 empire v3 繼承的決議
+本框架是在前一代哲學上再做一次跳躍，非單純增量。
+
+### 從前一代繼承的決議
 - Control Plane Pattern（main session 為唯一編排者，subagent 全 leaf）
 - 純 md + JSON、零 shell script
 - Claude-only、無 multi-LLM family 支援
-- 外部知識庫與 framework 解耦（不自動寫）
+- 外部知識庫與 framework 解耦（不自動寫；可 opt-in 經批准升流，見 §12.3）
 - Fail-closed Bash 白名單
-- Spec/brief 目錄約定
+- Brief 目錄約定
 - Grill-me 單題制
 - Worktree 隔離（dev 場景）
 - 使用者授權才寫外部知識庫、依賴安裝走升級流程
 
-### 從 empire v3 推翻或重構的部分
-見第 18 節「與 empire v3 的 diff」。
+### 推翻或重構的部分
+見第 18 節「相對前一代的變更」。
 
 ---
 
@@ -170,7 +181,7 @@
 ### 4.2 抽象任務流（E²R 樹，受限 2 層）
 
 ```
-使用者：/brief-new "分析 Q2 slot game 的 revenue 異常"
+使用者：/brief-new "分析 Q2 營收異常"
   ↓
 Main：偵測 active brief → 若有則拒；否則建 brief
   ↓
@@ -253,7 +264,7 @@ Framework 落地專案後的根目錄是 `.framework/`，內含 `lib/`（出貨�
 │   ├── claude-md-template.md        ← CLAUDE.md 骨架
 │   └── pipeline-yaml-template.md    ← .framework/pipeline.yaml 骨架
 │
-├── commands/                        ← 20 份；init 時複製到 .claude/commands/
+├── commands/                        ← 21 份；init 時複製到 .claude/commands/
 │   ├── framework-{init, status, role-add/edit/list/remove}
 │   ├── framework-{recipe-list, pipeline-edit, recover, unlock}
 │   ├── framework-{trust-set, permissions-sync, learn}
@@ -300,7 +311,7 @@ my-project/
 │   │   └── sessions/                 ← brief 完成時 main 寫 {brief_id}.md
 │   ├── briefs/
 │   │   ├── _active.yaml              ← 當前 active brief
-│   │   ├── inbox/                    ← 純檔案投遞入口（C 專案 Telegram script）
+│   │   ├── inbox/                    ← 純檔案投遞入口（外部 script / 訊息機器人）
 │   │   ├── _archive/                 ← 完成歸檔
 │   │   │   └── {year-month}/{brief_id}/
 │   │   └── {brief_id}/               ← 進行中 brief
@@ -332,7 +343,7 @@ my-project/
 │   ├── skills/                       ← init 從 lib/skills/ 複製
 │   │   └── {skill_id}/SKILL.md
 │   ├── commands/                     ← init 從 lib/commands/ 複製
-│   │   └── (19 份 slash command)
+│   │   └── (20 份 slash command)
 │   └── settings.local.json           ← opt-out / trust mode / permissions sync
 │
 ├── CLAUDE.md                         ← init 生成（含強制清單 + canonical schema）
@@ -354,14 +365,14 @@ my-project/
 
 Recipe = 「我建議你這幾個 role + 這些 skill + 這條 pipeline 一起用」。落地時複製對應檔案，不是鎖定整包。
 
-| Recipe | 對應專案 | Roles | 預設 trust mode |
+| Recipe | 典型場景 | Roles | 預設 trust mode |
 |---|---|---|---|
-| **dev-team** | B（Go 微服務） | planner, planning-reviewer, engineer, code-reviewer | standard |
-| **research-team** | （A 部分需求） | researcher, source-quality-reviewer, analyst, reasoning-reviewer | standard |
-| **writing-team** | （A 報告產出） | writer, editor | standard |
-| **finance-advisory** | A（金融顧問） | researcher, source-quality-reviewer, financial-analyst, reasoning-reviewer, writer, editor | standard |
-| **data-analytics** | （slot game 類） | data-analyst, analysis-reviewer, writer | standard |
-| **general-assistant** | C（生活助理） | assistant, double-checker | standard |
+| **dev-team** | 軟體開發 | planner, planning-reviewer, engineer, code-reviewer | standard |
+| **research-team** | 研究調查 | researcher, source-quality-reviewer, analyst, reasoning-reviewer | standard |
+| **writing-team** | 文件 / 報告產出 | writer, editor | standard |
+| **finance-advisory** | 金融顧問 | researcher, source-quality-reviewer, financial-analyst, reasoning-reviewer, writer, editor | standard |
+| **data-analytics** | 資料分析 | data-analyst, analysis-reviewer, writer | standard |
+| **general-assistant** | 通用 / 外部觸發助理 | assistant, double-checker | standard |
 
 Recipe YAML 範例：
 
@@ -559,7 +570,7 @@ Main 讀 DAG → 對每 sub-brief 跑選定 pipeline → 無依賴 stage 同訊�
 
 ### 10.2 Review 雙層
 
-- **Stage 內 review**（empire v3 風格）：每 producer artifact 立即配對 reviewer 機械檢查
+- **Stage 內 review**：每 producer artifact 立即配對 reviewer 機械檢查
 - **L0 holistic review**：所有 sub-brief Execute 完之後，main 讀各 sub-brief 的 final.md，檢查跨 sub-brief 一致性
 
 L0 holistic review 不 spawn 專門 role；main 直接做（理由：一致性檢查需要看全局，spawn role 反而複雜化）。
@@ -593,18 +604,18 @@ L0 holistic review 不 spawn 專門 role；main 直接做（理由：一致性�
 
 | 來源 | 描述 | 預設啟用 |
 |---|---|---|
-| **A. 純檔案** | `.framework/briefs/inbox/{name}.md` | 是（C 專案 Telegram script 用此） |
+| **A. 純檔案** | `.framework/briefs/inbox/{name}.md` | 是（外部 script / 訊息機器人投遞用此） |
 | **B. 對話偵測** | 使用者打需求 → main 偵測 → 詢問是否進入正式流程 | 是 |
 | **C. Slash command** | `/brief-new` 短訪談 → 建檔 | 是（**主推**） |
 | **D. GitHub Issue 整合** | `/brief-import <url>` | 可選（git remote 是 GH 才提示） |
 
 ### 11.2 ID 格式（8b）
 
-`YYYY-MM-DD-<slug>`，例：`2026-05-06-slot-revenue-q2`。Sub-brief：`{root_id}.{a/b/c/...}`。
+`YYYY-MM-DD-<slug>`，例：`2026-05-06-revenue-q2`。Sub-brief：`{root_id}.{a/b/c/...}`。
 
 ### 11.3 並發（8c）
 
-- **單 active brief**（`.framework/briefs/_active.yaml` 取代 v3 `_batch.lock`）
+- **單 active brief**（`.framework/briefs/_active.yaml` 為單一進行中 brief 的鎖）
 - 試開新 brief 時若已 active → 提示：等待 / 升級為 sub-brief / 取消當前
 - 「multi-agent」=「同一個 main session 內 spawn 多 subagent」，**不是**多 process / 多 session 同時跑
 
@@ -671,7 +682,7 @@ L0 holistic review pass 後、學習迴圈前（控制面 Step F'），使用者
 
 ### 12.2 Codex vs Memory 邊界
 
-- **Codex** = 靜態領域知識（slot game column 意義、DCF 公式適用條件）；變動慢
+- **Codex** = 靜態領域知識（資料欄位意義、估值公式適用條件等）；變動慢
 - **Memory** = 動態經驗累積（這次怎麼做的、為什麼成功/失敗）；變動快
 
 ### 12.3 學習迴圈（brief 完成時）
@@ -695,6 +706,8 @@ Step 5. Main **直接寫**：
 - Step 1 sessions 自動寫——**brief 必走、不論 verdict 全 pass / 評分跳過**
 - Main 不在 mid-execution 寫 memory；但 learning loop 階段使用者批准後 **可直接寫**
 - **永遠不需另開 brief 寫 memory**（漏跑用 `/framework-learn` 補）
+
+**外部 KB sink（opt-in）**：repo 若在 `.initialized` 宣告 `knowledge_base{path,promote,recall}`，Step 5 寫完 local 後可把經批准的 lessons / patterns / preferences 蒸餾升流外部 KB（Step 4 的 `(m)` 選項），`/framework-recall` 則唯讀查 KB 參考其他 repo。沒宣告 = local-only（預設）。詳見 `core/learning-loop.md` §8.5 / §11.5。
 
 ### 12.4 Memory 紀律
 
@@ -728,7 +741,7 @@ entry_count: 2
 # Lessons: data-analysis
 
 - [2026-05-06] [id:lesson-2026-05-06-001] cohort 切法影響 revenue baseline 計算
-  - source_brief: 2026-05-06-slot-revenue-q2
+  - source_brief: 2026-05-06-revenue-q2
   - last_referenced: 2026-05-06
   - reference_count: 0
 - [2026-05-06] [id:lesson-2026-05-06-002] ...
@@ -764,7 +777,7 @@ Producer 與 Reviewer 共用一份 schema，actor.type 區分：
   "actor": {
     "role": "code-reviewer",
     "type": "producer|reviewer",
-    "spec_id": "2026-05-06-slot-revenue-q2.a",
+    "spec_id": "2026-05-06-revenue-q2.a",
     "round": 1,
     "stage": "analysis",
     "adversarial": false
@@ -844,9 +857,9 @@ worktree: optional            # required | optional | forbidden（依場景；�
 5. 審核動作清單（reviewer-only，必跑 Bash / 必讀檔）
 6. 鐵律（禁止事項）
 
-刪除（vs v3）：
-- v3 第 6「輸出 JSON Schema」→ 統一引用 `core/typed-interfaces.md`
-- v3 第 7「Handoff Block」→ 取消（10d）
+相對早期設計的精簡：
+- 早期的「輸出 JSON Schema」章節 → 統一引用 `core/typed-interfaces.md`
+- 早期的「Handoff Block」章節 → 取消（見 §13.3）
 
 ### 14.3 Skill 檔（`.claude/skills/{skill_id}/SKILL.md`）
 
@@ -869,16 +882,16 @@ applicable_roles: [code-reviewer, planning-reviewer]
 ```yaml
 ---
 role: data-analyst
-project: slot-game-q4
+project: analytics-q4
 version: 0.3.2
 last_updated: 2026-05-06
-last_updated_by: 2026-05-06-slot-revenue-q2
+last_updated_by: 2026-05-06-revenue-q2
 ---
 
-# Codex: data-analyst @ slot-game-q4
+# Codex: data-analyst @ analytics-q4
 
 ## 1. 領域知識點
-### slot_id
+### <欄位名>
 - 含義：...
 > Source: 2026-04-12-revenue-baseline / Confirmed: yes / Confidence: high
 
@@ -964,7 +977,7 @@ Step 6. 摘要 + 強制重啟提示
 
 `/framework`（系統管理，少用）+ `/brief`（日常，高頻）。`/memory` 暫時併進 `/framework`。
 
-### 16.2 指令列表（13b，共 20 個）
+### 16.2 指令列表（13b，共 21 個）
 
 #### `/framework`
 
@@ -983,6 +996,7 @@ Step 6. 摘要 + 強制重啟提示
 | `/framework-trust-set <mode>` | 切 trust mode + sync settings.local.json permissions |
 | `/framework-permissions-sync` | 強制 re-sync settings.local.json permissions |
 | `/framework-learn` | 補處理歸檔 brief 的 _suggestions / ad-hoc 加 lesson / pattern（不需另開 brief） |
+| `/framework-recall <主題>` | 唯讀查外部 KB 參考其他 repo（opt-in，recall=true 才可用） |
 
 #### `/brief`
 
@@ -1052,7 +1066,7 @@ CLAUDE.md 開頭四層判斷：
 | 模式 | 適用 | Bash 哲學 | 依賴安裝 |
 |---|---|---|---|
 | **strict** | 生產 / 共用 / 不熟環境 | 最小白名單 | 嚴格 needs_dependency |
-| **standard** | 個人熟悉 repo（v3 預設） | 14b 合理白名單 | needs_dependency |
+| **standard** | 個人熟悉 repo（預設） | 合理白名單 | needs_dependency |
 | **sandbox** | 拋棄式 VM / 空白專案 | 大幅放寬 | 直接允許 install |
 
 **各模式 deny**：
@@ -1111,26 +1125,26 @@ top:   claude-opus-4-7
 
 ---
 
-## 18. 與 empire v3 的 diff
+## 18. 相對前一代的變更
 
 ### 保留
 - Control plane 模式 / main session 為唯一編排者
 - 純 md + JSON、零 shell script
 - Claude-only
-- 外部知識庫解耦
+- 外部知識庫解耦（預設；可 opt-in 升流，見 §12.3）
 - Fail-closed Bash（但加 trust mode 三檔）
 - Spec/brief 目錄約定（.framework/briefs/ 取代 specs/，結構類似）
 - Grill-me 單題制
 - Worktree 隔離（dev recipe 預設）
 - 使用者授權才寫外部知識庫、依賴安裝走升級流程
 - Subagent 全 leaf（nested Task 不可用）
-- v3 Q-A 的 core/* md 大部分概念保留
+- 早期版本的 core/* 概念大部分保留
 
 ### 重構
 - **Archetype 拆成 Role + Skill + Recipe 三層**：role 獨立可組合，skill 跨 role 共用，recipe 是建議組合
 - **新增 Codex 層（L2.5）**：(role × project) 領域知識，與 Skill / Memory 分離
 - **平面 review loop → E²R 2 層樹**：sub-brief 是第一公民、Explore 流程明確化（6 步）、Execute 用 DAG pipeline、Review 雙層（stage + L0 holistic）
-- **Verdict 擴展**：從 v3 的 pass/fail + handoff，擴展為 7 個 verdict types（含 ambiguity / needs_decomposition / needs_dependency / tool_error / partial）
+- **Verdict 擴展**：從早期的 pass/fail + handoff，擴展為 7 個 verdict types（含 ambiguity / needs_decomposition / needs_dependency / tool_error / partial）
 - **取消 Handoff Block**：JSON summary 欄位代替
 - **Producer 不直寫 `.claude/skills/` / `.framework/codex/` / `.framework/memory/{lessons,patterns}/`**：必須走 verdict 的 suggest_* 欄位 + 使用者批准（防幻覺放大）
 - **Trust Modes 三檔**：strict / standard / sandbox（解決沙盒場景痛點）
@@ -1142,9 +1156,10 @@ top:   claude-opus-4-7
 - SLIDERS provenance frontmatter 預留接口（每 memory 條目 + codex 知識點）
 - /brief namespace（與 /framework 分離）
 - /framework-trust-set 模式切換指令
+- 可插拔外部 KB sink（opt-in）：learning loop 升流蒸餾後 lessons/patterns/preferences + /framework-recall 唯讀跨 repo 查詢；沒接 KB 維持解耦（見 §12.3）
 - **Amendment 層**：L0 review 後、歸檔前的輕量修訂入口（無 reviewer、cap 3 訪談、單 producer 動作、第 2 次警告 / 第 3 次拒）
 
-### 推翻（v3 也曾推翻、本框架繼續推翻）
+### 推翻（早期即已捨棄，本框架延續）
 - Nested Task / 池主管獨立 subagent
 - 多 LLM family 支援
 - Shell script 檔案
@@ -1182,13 +1197,13 @@ top:   claude-opus-4-7
 
 ### 19.D. Recipes 6 份 yaml 內容
 
-dev-team / data-analytics / finance-advisory 三份最急（對應你 A 與 B 專案 + slot game 場景）。
+dev-team / data-analytics / finance-advisory 三份最急（對應軟體開發、資料分析、顧問場景）。
 
 ### 19.E. Init 對話腳本
 
 `init/interview.md` 的實際題目與分支邏輯、`init/generator.md` 把答案轉檔的具體邏輯、`init/codex-bootstrap.md` 第 4 步輕訪談流程。
 
-### 19.F. Slash commands 19 份 md 內容
+### 19.F. Slash commands 20 份 md 內容
 
 每個指令的對話腳本與檔案操作邏輯。
 
@@ -1204,15 +1219,15 @@ Core 必備欄位的具體格式、recipe 擴充欄位約定、解析邏輯。
 
 Node state machine、寫入時機、衝突處理。
 
-### 19.J. 錯誤處理細節（v3 Q-G）
+### 19.J. 錯誤處理細節
 
 Subagent Task call 失敗的重試策略、JSON 解析失敗的修正回合、tool_error 的升級流程細節。
 
-### 19.K. 中斷恢復細節（v3 Q-H）
+### 19.K. 中斷恢復細節
 
 Ctrl-C 後 _active.yaml 的處置、`/framework-recover` 的逐 sub-brief 詢問流程、worktree 取捨。
 
-### 19.L. Framework 升級同步（v3 Q-L）
+### 19.L. Framework 升級同步
 
 3-way merge 機制、版本號比對、role/skill 客製保留策略。
 
@@ -1226,7 +1241,7 @@ Ctrl-C 後 _active.yaml 的處置、`/framework-recover` 的逐 sub-brief 詢問
 
 ### 19.O. SLIDERS 結構化儲存升級
 
-整個 C 路線。落地後若 memory / codex 規模膨脹明顯，再啟動 import 工具設計。
+整個結構化儲存路線。落地後若 memory / codex 規模膨脹明顯，再啟動 import 工具設計。
 
 ### 19.P. Amendment 層落地細節
 
@@ -1247,36 +1262,26 @@ Ctrl-C 後 _active.yaml 的處置、`/framework-recover` 的逐 sub-brief 詢問
 3. **寫 `core/typed-interfaces.md`**——verdict / handoff 的 JSON schema
 4. **寫 `core/e2r-tree.md` + `core/review-loop.md`**——任務流核心
 5. **寫 `core/trust-modes.md`**——權限機制
-6. **寫 dev-team recipe 全套**（4 個 role + 必要 skill + recipe.yaml）——empire 使用者最熟的情境，先驗證
+6. **寫 dev-team recipe 全套**（4 個 role + 必要 skill + recipe.yaml）——dev 場景最先驗證
 7. **驗證**：在一個 dev 專案下實際跑一個 dummy brief，看 main 能不能跑完一輪
-8. **寫 finance-advisory recipe 全套**——驗證跨 domain，是 v3 → 本框架最大的改進方向
-9. **寫 init 對話 + 19 個 slash commands**
+8. **寫 finance-advisory recipe 全套**——驗證跨 domain，是本框架最大的改進方向
+9. **寫 init 對話 + 20 個 slash commands**
 10. **寫剩餘 recipes**
 11. **錯誤處理 / 中斷恢復 / 升級同步等 edge cases**
 
 ---
 
-## 21. 給接手 agent 的備註
+## 21. 實作備註
 
-### 使用者檔案
-- 語言：繁體中文，保留英文技術術語
-- 風格：要求簡潔、條列、給推薦、標清楚 trade-off
-- 答題：直接「選 A」「同意」「照你推薦」結案
-- 偏好：寧可多問、多確認權限、少自主決策
-- 全域 CLAUDE.md：`C:\Users\liangxuanzhong\.claude\CLAUDE.md`
-- 全域 memory：`C:\Users\liangxuanzhong\.claude\projects\D--Claude\memory\`
-- 使用者 email：dnc22412125@gmail.com
-- 當前日期：2026-05-06
-
-### 已明確拒絕的方向
+### 已明確排除的方向
 
 **不要**再提：
-- Nested Task / 池主管獨立 subagent / 前台 Haiku 獨立 subagent
+- Nested Task / 池主管獨立 subagent / 獨立前台 subagent
 - 多 LLM family（Claude only）
 - Shell script 可執行檔
 - Producer 自主裝依賴 / 自主寫 skill / codex
 - Framework 預先定義固定整包 archetype
-- 自動寫外部知識庫
+- 全自動寫外部知識庫（gated opt-in 升流是已接受方案，見 §12.3）
 
 ### 容易被新 agent 誤解的點
 
@@ -1288,26 +1293,14 @@ Ctrl-C 後 _active.yaml 的處置、`/framework-recover` 的逐 sub-brief 詢問
 - **Single active brief**：multi-agent ≠ multi-process
 - **Trust mode 是模式選擇，不是繞過權限**：sandbox 仍擋 sudo / rm -rf / / chmod 777 /
 
-### 實測過的技術限制（empire v2-v3 留下）
+### 實測過的技術限制
 
 1. **Nested Task 不可用**：subagent frontmatter 即使宣告 `tools: Task`，執行時 Task tool 不可用。錯誤：`Task tool is not available in this environment`。實測 2026-04-24，Claude Code `2.1.119`。
 2. **Main session spawn leaf subagent 可行**：實測 main → producer artifact → reviewer verdict JSON，兩個 Task call 真的發生，成本約 $0.25 / 20 秒。
 3. **Headless mode 可行**：`claude -p ... --permission-mode=bypassPermissions --output-format=json`。
 
-### 技術參考資料
+### 概念參考
 
-- `D:\Claude\empire\design-summary-v3.md`——前身，仍是最完整的細節參考
-- `D:\Claude\empire\design-summary-v2.md`——v2，含 4 個 subagent 的具體 Soul.md 寫法（可作 dev-team role template 起稿參考）
-- `D:\Claude\empire\design-summary.md`——v1
-- `D:\Claude\multi-team-architecture-study.md`（liliscore Part IV 可攜性設計）
-- `C:\Users\liangxuanzhong\Downloads\Telegram Desktop\harness_engineering\harness_engineering\` 六章
-- `https://ai-coding.wiselychen.com/harness-engineering-control-plane-pattern-agent-review-loop/`
-- arXiv:2604.22446（OneManCompany）——Talent + E²R + Talent Market
-- arXiv:2604.22294（SLIDERS）——結構化儲存 + 調和管線（C 路線預留）
-
-### 開始工作前一定要確認的事
-
-1. 使用者是否還要改本設計總覽？還是直接從 19.A 開始？
-2. 第一個要寫的檔案是什麼？（建議 `core/soul-schema.md`）
-3. dogfood 階段：邊寫邊在 `D:\Claude\framework\` 下自己試跑？還是先寫整套再部署？
+- **OneManCompany**（arXiv:2604.22446）——Talent + E²R + Talent Market
+- **SLIDERS**（arXiv:2604.22294）——結構化儲存 + 調和管線（結構化儲存路線預留）
 

@@ -286,9 +286,15 @@ customizations:
 tier_overrides: {}    # role name → cheap|mid|top；只記 sub-agent 的 tier 覆寫
                       # **不記 main 的 tier**：main session model 由使用者啟動 Claude Code 時自選，
                       # framework 無法控制；寫了也無效，反而誤導
+# knowledge_base:     # 可選 opt-in；不連接外部 KB 則整段省略（local-only，預設）
+#   path: <外部 KB 路徑>   # 例如某 Obsidian vault 的絕對路徑
+#   promote: false            # true=brief 收尾經批准的 lessons/patterns/preferences 蒸餾升流 KB
+#   recall: false             # true=可用 /framework-recall 唯讀查 KB 參考其他 repo
 bash_extra_allow: []
 bash_extra_deny: []
 ```
+
+`knowledge_base` 為可選 opt-in 段：init 時若使用者表示要連外部 KB 才寫入並填 `path` / `promote` / `recall`，否則整段省略（local-only）。行為見 `core/control-plane.md §8.5`、`core/learning-loop.md §8.5/§11.5`。
 
 ### 2.9 寫 `.claude/settings.local.json`（含 permissions sync）
 
@@ -523,5 +529,5 @@ This project uses a multi-agent framework. See [CLAUDE.md](CLAUDE.md) for detail
 - **不在這層做語意檢查**：產檔正確性由 soul-schema.md / 各 schema 文件規範
 - **codex 草稿是 v0.1.0**：明確標 confidence: low，main 在後續 Explore 時會視情況提議修正
 - **.framework/memory/ 結構是空的**：除了 MEMORY.md / architecture.md / preferences.md 三個有模板，其他子目錄是空的
-- **不寫外部 KB**：framework init 與外部 KB 解耦
+- **不寫外部 KB**：framework init 預設與外部 KB 解耦（連線為 opt-in）
 - **不執行 git 操作**：init 不 commit、不 push、不改 git config

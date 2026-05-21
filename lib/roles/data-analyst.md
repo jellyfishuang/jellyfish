@@ -77,6 +77,6 @@ worktree: optional
 - **不安裝依賴**：缺套件回 needs_dependency
 - **不繞過 hook**
 - **commit message 規範**：不寫 AI 標記
-- **不直寫外部 KB**
+- **不直寫外部 KB（升流由 learning loop 處理）**
 
 TODO（落地後補）：常見 dataset schema 的 codex 範本、統計檢定的選擇樹（t-test / chi-square / mann-whitney 何時用）。

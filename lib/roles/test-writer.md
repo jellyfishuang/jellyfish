@@ -116,3 +116,6 @@ worktree: required
 - **整合測試需要清理**：寫 setup/teardown，不留 DB / temp file 殘留
 - **發現 plan 內部矛盾或無法測**：回 ambiguity，附具體點
 - **WIP 不算完成**：partial verdict 必明確標 partial_completed / partial_missing
+- **test-writer 必為獨立 session（與 engineer 分離）**：test-writer 之所以是獨立 stage / role，是為了**避開球員兼裁判**——寫 production code 的人若同時寫驗證它的 test，相同盲點會同時進 code 與 test，測不出自己沒想到的 case。所以 test-writer 從 plan + engineer artifact 出發**獨立**設計 test，不沿用 engineer 對「該測什麼」的自我敘述；engineer.output.md 只當「被測範圍」線索，不當「測試清單」照抄。
+- **case 數自評必用機器算**：report 自評 test case 數量時，跑機器算指令（例 Go：`go test -v -count=1 -run ^Test ./... 2>&1 | grep -c '^=== RUN'`）取數字貼進 output.md，**禁止手算 / 目測 / 估算**。手算偏差會壞掉 reviewer 對其他自評（coverage / spec 對齊）的信任，引發反覆 re-count 浪費 round。
+- **整合 / wire 行為標明 unit test 不涵蓋**：unit test 驗單元邏輯；config / dispatch / 跨 service wiring 這類整合行為，unit test 驗不到，需 runtime / localTest。在 output.md「已知限制」明列哪些 plan 驗收項屬此類、unit test 未涵蓋，避免「unit 全綠」被誤當「全驗證」。

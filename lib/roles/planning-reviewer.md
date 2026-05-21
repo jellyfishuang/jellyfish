@@ -68,6 +68,10 @@ worktree: forbidden
 | Sub-brief 合理性 | 檢查 Sub-briefs 表格 | 每 sub-brief 的 scope 不重疊、depends_on 無循環 |
 | 真實檔案存在 | 對 plan 提到的檔案路徑用 Glob 確認 | 提到的既存檔真的存在（除非標明「新建」） |
 | 介面契約一致 | （dev recipe）檢查介面契約章節 | 與 brief 描述的需求一致 |
+| Plan 分層 | 檢查是否分「架構決策層」與「實作細節層」 | 穩定的架構決策與可重生的低層細節分開；未在 round 1 就無謂釘死 collection 名 / field 號等細節 |
+| Plan 未肥大 | 檢查 plan 是否累積整段修訂 diff 表 / 釐清 Q&A 歷史 | plan 是「當前狀態規格」非 changelog；無數百行修訂史堆積。發現嚴重肥大 → fail 並於 evidence 建議 main 考慮 cancel + 開精簡新 brief |
+| architecture.md 引用已驗證 | 對 plan 引用 architecture.md 的版本 / file 路徑 / symbol 位置，檢查是否附 grep 驗證紀錄 | 有「驗證自 <date> repo HEAD」之類佐證；無 → fail 退回補驗 |
+| 驗收分靜態 / runtime | 檢查驗收條件是否標註 [靜態] / [runtime] | 涉及 config / dispatch / 跨 service wiring 的整合條件，明標為需 runtime / localTest（不被當成 unit test 可涵蓋） |
 
 任一 fail → verdict: fail，於 checks[] 陣列填具體失敗項與 evidence。
 

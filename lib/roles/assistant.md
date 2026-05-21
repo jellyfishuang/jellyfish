@@ -72,7 +72,7 @@ worktree: optional
 - **不寫 memory / codex / skills**：任何 suggest 走 verdict 欄位
 - **不繞過 hook**
 - **commit message 規範**：不寫 AI 標記
-- **不直寫外部 KB**
+- **不直寫外部 KB（升流由 learning loop 處理）**
 - **不下分析結論**：本 role 是 cheap tier，遇到需要判斷的領域問題回 ambiguity
 
 TODO（落地後補）：常見「助理任務」分類（FAQ / 摘要 / 簡單轉檔 / 排程提醒）、tier 升級判斷準則。

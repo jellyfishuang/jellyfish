@@ -67,6 +67,6 @@ worktree: forbidden
 - **不蒐新來源**：發現資料不足 → 回 ambiguity 或 partial，不自行 WebSearch
 - **必列反方**：critical claim 沒列替代解釋 → 自評 partial
 - **不改 plan**：發現 plan 內部矛盾 → 回 ambiguity 附證據
-- **不直寫外部 KB**
+- **不直寫外部 KB（升流由 learning loop 處理）**
 
 TODO（落地後補）：reasoning 模板（claim/evidence/assumption/counterargument 四層格式）、特定分析類型（competitive / risk）的延伸欄位。

@@ -180,7 +180,7 @@ nodes:
 
 - 不以 main 身份直接寫 artifact
 - 不繞過 reviewer 放行失敗產出
-- 不自動寫外部 KB（除非使用者明確要求）
+- 不自動寫外部 KB（預設解耦；連線為 opt-in）
 - **不在 mid-execution 偷偷寫** `.claude/skills/`、`.framework/codex/`、`.framework/memory/lessons/`、`.framework/memory/patterns/`
   - mid-execution 觀察 → 用 verdict.suggest_* 聚合到 `_suggestions.json`
   - **Brief 結束的 learning loop 階段**：使用者批准後 main **可直接寫**（這是設計，不是繞過）
@@ -223,4 +223,4 @@ nodes:
 - **填充不到的欄位用合理預設**：例：使用者 Q1 答空 → primary_use 用「未指定」
 - **不寫 secrets / 路徑魔法數字**：CLAUDE.md 進 git，所有值都應安全
 - **不寫 D:\ 開頭路徑**：跨機器不可移植；用相對路徑或 `~`
-- **不寫外部 KB 路徑**：framework 與外部 KB 解耦
+- **不寫外部 KB 路徑**：framework 預設與外部 KB 解耦、連線為 opt-in

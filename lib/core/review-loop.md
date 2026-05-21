@@ -160,6 +160,27 @@ main 動作：
 
 第 1 次 explore = 初始；第 2 次 = round 2 fail 後重做。若第 2 次後仍 fail → 不該再 explore（plan 第 2 次寫錯仍 fail，問題已超 framework 能處理範圍，必升級使用者）。
 
+### 3.4 Micro-change 的對抗式 review 豁免（避免過度工程化）
+
+**問題**：對極小改動（單檔 ≤ N 行），`second_review: true` 的 adversarial reviewer 仍被要求「找出 ≥1 個 gap」。改動越小、真 gap 越少，reviewer 越會擠出 nuance 級的「gap」——其中多數是對該改動規模而言的 over-engineering。實測一個 2 行改動可被擠出 9 個 gap，6 個是過度設計，撞 `rounds.adversarial == 2` 上限後升級，成本遠大於效益。
+
+**規則**：當本 stage 的實際改動規模低於門檻時，**自動跳過 adversarial second pass**（仍跑 §5 checklist + reviewer 內建的 §5.x 對抗式視角；只是不再 spawn 第二人 fresh-eyes adversarial）。
+
+門檻由 pipeline.yaml 的 `second_review` 設定（見 `init/pipeline-yaml-template.md`）：
+
+```yaml
+second_review:
+  enabled: true
+  skip_below_lines: 10      # 本次 diff 淨改動 < 10 行 → 跳過 adversarial second pass
+  skip_single_file: true    # 且只動 1 檔時更傾向跳過
+```
+
+- `second_review: true`（bool 舊寫法）等義於 `{enabled: true}` 無 size gate（維持相容）
+- main 在 spawn adversarial 前，用 `git diff HEAD --stat`（engineer 已交付）取實際行數判斷
+- 跳過時於 _manifest.md 記「adversarial skipped: micro-change (Δ{n} 行 / {m} 檔)」
+
+**配套（triage 層）**：更根本的是讓 micro-brief 一開始就走輕量 pipeline——見 `core/control-plane.md` triage 規則（單檔 ≤ 5 行類改動建議走 `bug_fix`，跳過 planning stage）。size gate 是第二道防線，擋住「已進 new_feature 才發現是小改」的情況。
+
 ---
 
 ## 4. Producer Verdict（非 fail）的處理

@@ -191,6 +191,53 @@ estimated_complexity: small (≤50 expected)
 ratio_exceeded: 17x
 ```
 
+## 11. Plan↔Code 命名 / 契約對齊
+
+**動作**：從 plan 的「介面契約」「範圍」章節抽出對外命名（型別 / 函式 / cmd / struct / RPC 名），grep 實際 code 確認存在且一致。
+
+**通過條件**：
+- code 的對外命名與結構與 plan 描述一致 → pass
+- 不一致且 plan 未授權 engineer 自訂命名 → fail（doc drift：plan 寫 `LobbyDataSource`，code 變 `PGameConfigClient`，未來 engineer 讀 plan 會被誤導）
+
+**Evidence**：
+```
+plan_says: ["LobbyDataSource", "FakeLobbyDataSource", "Wrapper"]
+code_has:  ["PGameConfigClient", "MockPGameConfigClient", "GRPCClient"]
+drift: 3 symbols renamed, plan not updated
+```
+
+## 12. 跨檔 Wiring 完整性
+
+**動作**：對本次新增 / 改名的 config key、env var、registration symbol（任何「需在多個檔案同步出現才生效」的東西），grep 其所有應出現的 wiring 點。
+
+```bash
+git grep -n "<symbol>"   # 例 projectConfigMap / PGAME_CONFIG_SERVICE_ADDR
+```
+
+**通過條件**：所有 wiring 點都接上。「加了 config struct field + reader 卻漏接 registration map」即 fail（這類漏接 unit test 抓不到，只有 runtime / localTest 會 panic）。
+
+**Evidence**：
+```
+symbol: PGAME_CONFIG_SERVICE_ADDR
+wired:   [config/file.go ✓, server.go ✓, Configuration struct ✓]
+missing: [main.go::projectConfigMap ✗]   ← fail
+```
+
+## 13. 註解紀律
+
+**動作**：Read diff 內新增 / 改動的註解（含被改段落附近的既有註解）。
+
+**通過條件**：
+- 無 WHAT 註解（重述 code 在做什麼，例 `// loop over games`）
+- 留下的註解對應**當前** code，無「code 改了註解沒改」的 drift
+- 業務 / WHY 註解內容正確（不誤導）
+
+**Evidence**：
+```
+redundant_what: [manager.go:88 "// increment counter"]
+stale: [common.go:42 註解寫 "fallback to en" 但 code 已改 fallback defaultLang]
+```
+
 ---
 
 ## 執行順序
@@ -207,8 +254,13 @@ reviewer 應依此順序跑：
 8. WIP 殘留
 9. Commit message
 10. 自評誠實
+11. Plan↔code 命名 / 契約對齊
+12. 跨檔 wiring 完整性
+13. 註解紀律
 
 任一 step fail → 立即 emit verdict: fail，不再跑後續（節省 token）。
+
+注意：§11-13 是語意層檢查（對齊 / wiring / 註解），不像 §1-2 能 fail-fast。即使 §1-10 全 pass 也必跑——它們正是「checklist 全綠卻在 holistic / 逐行 review 才爆」的那類問題的攔截點。
 
 ---
 

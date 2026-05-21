@@ -82,8 +82,15 @@ Memory
   patterns/ 3 categories, 8 條
   sessions/ 23 個歷史 brief
 
+──────────────────────────────────────────
+Knowledge Base
+──────────────────────────────────────────
+  connected (<knowledge_base.path>)  promote=on  recall=on
+
 ==========================================
 ```
+
+> Knowledge Base 區：`.initialized` 有 `knowledge_base` → 顯示 `connected (path) promote=.. recall=..`；無 → `not connected (local-only)`。
 
 ## 異常顯示
 
@@ -102,4 +109,5 @@ Memory
 
 - `/framework-init`
 - `/framework-role-list`
+- `/framework-recall`（若已連接外部 KB）
 - `/brief-status`

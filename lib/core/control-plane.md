@@ -123,6 +123,10 @@ Step E. Execute 階段（見 Execute Section 5）
 Step F. L0 holistic review（main 自做，**必跑、即使單 sub-brief / 即使 pipeline 簡單**）
   - 讀所有 sub-brief 的 final.md（單 sub-brief 場景讀該 sub-brief artifact）
   - 檢查驗收條件、跨 sub-brief 一致性（若多）
+  - **僅靜態驗證**：holistic review 是 main 讀檔 + 跨檔一致性判斷，**不跑實機**。
+    plan 標 [runtime] 的驗收項（config / dispatch / 跨 service wiring 等整合行為）
+    框架流程**無法**確認——unit test 全綠 ≠ wire 已驗證（典型：config key 漏接 registration map，unit 過但 runtime panic）。
+  - 對所有 [runtime] 項，在完成摘要明列「需使用者端 localTest 驗證」清單，**不標成「已完成」**
   - 寫 _tree.yaml.holistic_review = pass | fail
   - pass → Step F'（可選 amendment 期）；fail → 回 Explore（review-loop.md 第 3 輪以上規則）
   ↓
@@ -155,6 +159,23 @@ Step I. 解鎖
 ---
 
 ## 4. Explore 階段（main 執行細節）
+
+### Step 0. 規模 triage（micro-brief 快篩，在 Step 1 之前）
+
+開 brief 後、決 roster 前，main 先快篩改動規模，選對 pipeline——**避免小改動被重流程過度工程化**：
+
+```
+若 brief 明顯是 micro-change（任一成立）：
+  - 單檔、預估 ≤ 5 行
+  - 純參數 / 設定 / 版本號 / 單行邏輯調整
+  - 使用者描述本身就是「把 X 改成 Y」這種點狀修改
+→ 建議走 bug_fix pipeline（跳過 planning stage：不 spawn planner + planning-reviewer + 對抗式）
+  顯示：「這像 micro-change（單檔小改），建議走 bug_fix 跳過正式規劃，省下 planner + 雙審成本。
+         要改走 new_feature 嗎？(用 bug_fix / 改 new_feature)」
+否則 → 照常 new_feature（或 triage_hints / default）
+```
+
+**為什麼**：實測 2 行改動走 `new_feature`，planning 階段對抗式 reviewer 仍被要求找 gap，硬擠出 9 個（6 個是 over-engineering），撞 adversarial 上限後升級——interview + planner + 雙審 + 升級的成本遠大於 2 行改動本身。第二道防線見 `review-loop.md` §3.4（已進 new_feature 才發現小改時，size gate 自動跳過 adversarial）。
 
 ### Step 1. Roster 決策
 
@@ -189,6 +210,7 @@ Step I. 解鎖
    - 摘要（main 自寫，總結上述蒐集到的東西）
    - 不確定點清單（main 自寫，標出哪些事 brief 沒說清楚）
    - 已知陷阱（從 lessons 摘）
+   - 跨 repo 參考（若 knowledge_base.recall=true 且使用者曾下 /framework-recall：併入 main 從外部 KB 撈回的其他 repo lessons/patterns/ADR；見 commands/framework-recall.md）
 8. 寫 .framework/briefs/{brief_id}/intel-pack.md
 9. 快取 mtime，下次 Explore 比對是否需重 build
 ```
@@ -485,8 +507,14 @@ Verdict schema 違規 → 視為 role 錯誤，不要 main 「猜意圖」自填
 ### 8.4 不私改 sub-brief 邊界
 Sub-brief 切分後，邊界（allowed_paths / depends_on）寫進 plan.md，main 不可在 Execute 中悄悄改。要改 → 回 Explore 改 plan → 重新批准。
 
-### 8.5 不自動寫外部 KB
-Framework 內部循環自給自足。外部知識庫只在使用者明確要求時才透過該 KB 自己的入口寫。
+### 8.5 外部知識庫（KB sink）：預設解耦、可 opt-in
+Framework 內部循環預設自給自足，不依賴外部知識庫（KB）。
+
+repo 若在 `.framework/.initialized` 宣告 `knowledge_base{ path, promote, recall }`：
+- `promote: true` → brief 收尾經 learning loop Step 4 `(m)` 批准的 lessons/patterns/preferences 蒸餾升流至 KB（見 learning-loop.md §8.5 / §11.5）
+- `recall: true` → 使用者可 `/framework-recall <主題>` 令 main 唯讀查 KB、把跨 repo 參考折進 intel-pack.md（見 §4 Step 2 + commands/framework-recall.md）
+
+block 不存在 = local-only（行為不變）。升流必經 Step 4 批准、不自動；KB 的手動寫入由該 KB 自己的入口處理（與框架無關）。設計細節見 `core/learning-loop.md` §8.5 / §11.5。
 
 ### 8.6 不接受 producer 直寫 skill / codex / lesson / pattern
 即使 producer 在訊息中說「我已寫了 lesson」，main 偵測到 producer 寫以下任一路徑 → 視為 schema 違規（path boundary 違反），retry：
@@ -532,4 +560,5 @@ Framework 內部循環自給自足。外部知識庫只在使用者明確要求�
 - `core/learning-loop.md`：brief 完成時的學習迴圈
 - `core/escalation-rules.md`：升級使用者的觸發條件
 - `core/trust-modes.md`：Bash 白名單三模式
+- `commands/framework-recall.md`：外部 KB recall（讀）端（opt-in）
 - `core/amendment.md`：Step F' amendment 期完整規範
