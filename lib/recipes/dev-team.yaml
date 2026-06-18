@@ -7,7 +7,7 @@ description: |
   開發場景套裝（planning + engineering + testing 三階段、reviewer 機械審核、worktree 隔離）。
   注意：所有 stage 預設 `second_review: true`（雙 pass：checklist + adversarial）——code/plan/tests
   最容易被 producer self-narrative 框住，雙過值得。**成本警示**：每 stage 2x reviewer cost；
-  full pipeline 全開累計 6x；adversarial cap=2 在多輪 fail 時會觸發 escalation `adversarial-deadlock`，
+  full pipeline 全開累計 6x；adversarial cap=3 在多輪 fail 時會觸發 escalation `adversarial-deadlock`，
   使用者可改個別 stage `second_review: false` 降回單 pass。
 version: 1.1.0
 

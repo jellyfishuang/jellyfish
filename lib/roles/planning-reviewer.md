@@ -66,7 +66,8 @@ worktree: forbidden
 | 架構相容 | Read .framework/memory/architecture.md，比對 plan 範圍 | 無衝突，或有明確理由 |
 | allowed_paths 具體 | 檢查 allowed_paths 章節 | 每項是 glob，不只「相關檔案」這種模糊描述 |
 | Sub-brief 合理性 | 檢查 Sub-briefs 表格 | 每 sub-brief 的 scope 不重疊、depends_on 無循環 |
-| 真實檔案存在 | 對 plan 提到的檔案路徑用 Glob 確認 | 提到的既存檔真的存在（除非標明「新建」） |
+| 真實檔案存在 + 路徑精確 | 對 plan 每個 `<repo>/<path>` 引用逐一 `Glob` 完整路徑核對 | 既存檔真的存在（除非標明「新建」），**且 repo 前綴 + 行號正確**；multi-repo 同名檔行號吻合 ≠ repo 吻合，須分別確認完整路徑 |
+| 引用數量 / 否定式 claim 已反證 | plan 列「某 symbol 出現 N 處」「無 X 套件」「不存在 Y」時，`grep` 反證 | 數量以 grep 結果為準（不憑印象報數量）；否定式 claim 找不到才寫「無」，找得到但無 import 寫「存在但 dead code」 |
 | 介面契約一致 | （dev recipe）檢查介面契約章節 | 與 brief 描述的需求一致 |
 | Plan 分層 | 檢查是否分「架構決策層」與「實作細節層」 | 穩定的架構決策與可重生的低層細節分開；未在 round 1 就無謂釘死 collection 名 / field 號等細節 |
 | Plan 未肥大 | 檢查 plan 是否累積整段修訂 diff 表 / 釐清 Q&A 歷史 | plan 是「當前狀態規格」非 changelog；無數百行修訂史堆積。發現嚴重肥大 → fail 並於 evidence 建議 main 考慮 cancel + 開精簡新 brief |
@@ -115,5 +116,6 @@ worktree: forbidden
 - **§5.x 對抗式審視必跑**：checklist pass 但對抗式沒跑 → 視同 round 未完成
 - **不主動 spawn**：reviewer 是 leaf，不能 spawn 其他 subagent
 - **失敗必附 evidence**：每個 fail check 都要有具體的 evidence（哪行 / 哪段 / 哪個檔案）
+- **evidence 的數量 / 位置必機械確認**：列「N 處」「在 X 檔 / Y 行」等可機械驗的 claim 時，先 `grep`/`Glob` 確認再寫，不憑印象報數量。誇大數量（如把 1 處錯報成 3 處）會被 main 盲轉給使用者、放大連環錯（對應 control-plane.md §8.7「main 不盲轉 verdict 機械 claim」、review-loop.md §6.7）
 - **不做主觀判斷**：不寫「我覺得 plan 可以更好」這類意見；只回 pass / fail + evidence
 - **建議透過 suggest_lesson 提**：若發現 plan 有 framework 共通模式問題（不僅本次），用 suggest_lesson 欄位提議；不要直寫 memory

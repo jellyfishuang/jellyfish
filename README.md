@@ -1,9 +1,9 @@
-# Multi-Agent Team Framework: Jellyfish
+# Multi-Agent Team Framework for Claude Code
 
 > 一套可攜、純文件（Markdown + YAML/JSON、零 shell script）的 multi-agent 編排框架。
 > Clone 進任何 Claude Code 專案、跑一次 `/framework-init` 即可使用。
 
-**版本：0.2.0（alpha）** · 詳見 [`CHANGELOG.md`](CHANGELOG.md)
+**版本：0.3.0（alpha）** · 詳見 [`CHANGELOG.md`](CHANGELOG.md)
 
 ---
 

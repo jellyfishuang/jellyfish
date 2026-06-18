@@ -119,6 +119,7 @@ Q4. Tier 偏好？
   (b) cheap-roles       reviewer 用 haiku、producer 用 sonnet（省成本）
   (c) top-orchestrator  main 用 opus（最佳編排品質，使用者自己 Claude Code 啟動時選）
   (d) custom            手動覆寫個別 role tier
+  (e) all-opus          全部 subagent 用 opus（最高品質、成本約 5× all-mid；top tier 模型見 models.yaml）
 > ____
 
 Q5. 偏好語言？

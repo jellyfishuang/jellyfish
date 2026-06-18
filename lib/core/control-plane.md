@@ -247,7 +247,7 @@ Step I. 解鎖
 1. 若 roster 內有 planning-reviewer role：
    spawn planning-reviewer，傳：plan-draft.md + 相關 lessons + architecture.md
    等回 verdict
-2. verdict pass → mv plan-draft.md → plan.md
+2. verdict pass → **main 定稿前 path-lint 機械閘門（見 §8.7）**：對 plan-draft 內每個 `<repo>/<path>` 引用逐一 `Glob` 抽驗（存在 + repo 前綴）+ reviewer verdict 列的可機械驗 claim（數量 / 路徑 / 行號）main 自 grep 抽驗不盲轉。通過 → mv plan-draft.md → plan.md；發現引用錯 → 回 planner 修（屬定稿前清理，不計 reviewer round）
 3. verdict fail → 把 reviewer 意見回給 planner（第 2 輪）
 4. 第 3 輪起若仍 fail → 視為 plan 本身有問題 → 回 Explore Step 3 補訪談
 5. 若 roster 無 planning-reviewer → 跳過此 step（plan-draft.md → plan.md）
@@ -331,6 +331,30 @@ process_verdict(sub_id, stage, verdict):
       顯示給使用者，問：接受 / 要求補完 / 取消
 ```
 
+**reviewer spawn input 通用約定**（checklist 與 adversarial 皆適用）：
+- main spawn 任何 reviewer（含 architecture-reviewer）時，input **必含 brief.md**（規格意圖，非僅 plan）。reviewer 報「對稱性 / special-case / 不對稱」finding 前須對照 brief 規格（見各 role md 閘 + `memory/lessons/architecture.md` L1）。
+- 若該 stage 涉**規格決定的 special case / 不對稱設計**（brief 特例條款或 plan「已知風險」有提），main 在 spawn prompt **主動摘要相關規格條款**——cold reviewer 即使 input 有 brief，rubric 仍可能把規格要求的不對稱當 smell。
+
+### 5.3.1 Architecture-reviewer 議案處理（advisory verdict + 架構速覽）
+
+architecture-reviewer 回 advisory verdict（`clean | findings`，非 pass/fail、不卡輪數）。main 收回後，**在該輪 arch-review 結束時**（`plan_design` / `implementation_design` 各一次）處理：
+
+```
+若 該 sub-brief 的 arch-review 被 skip（plan 標 skip / 改動 < skip_below_lines / 純 config·yaml）:
+    → 不出架構速覽，照常推進
+否則:
+    取 verdict.design_sketch（architecture-reviewer 必附；見其 role md §6.1）
+    原樣貼給使用者（≤30 行）
+    若 design_sketch.ack_required == false（重疊=N 且 偏離=N）:
+        → 純 FYI：貼出後不等待，照常進下一 stage
+    若 design_sketch.ack_required == true（重疊=Y 或 偏離=是）:
+        → 輕量 ack 閘：等使用者一句確認（接受現狀 / 要求調整 / 記技術債）才推進
+           不是 blocker 仲裁、不卡輪數，只要使用者看過拍一句
+blocker 級 finding 仍照原規則交使用者仲裁（與速覽 ack 獨立並行）
+```
+
+**設計理由**：advisory finding 清單會埋掉「形狀」問題（典型：新增與既有功能重疊的元件而未復用，被歸 advisory 默默記錄，到使用者目視 / amendment 才發現、回頭收斂）。速覽用結構化的「復用/新增 + 偏離 pattern」欄位把形狀頂到使用者眼前，在 code 落地後（implementation_design）或 plan 定案前（plan_design）即時攔。
+
 **Adversarial pass 的 spawn prompt 約定**（second_review=true 時）：
 
 當 main 對某 stage spawn 第二輪 reviewer：
@@ -354,9 +378,9 @@ Round 計數（與 review-loop.md §3.1 §3.2 一致）：
 **Cycle 語意**：
 - 「Cycle」 = 一輪「producer 出 → checklist reviewer 過 → adversarial reviewer 過 / 不過」
 - 每 cycle 內，**checklist 僅跑一次 / adversarial 最多跑一次**
-- 跨 cycle cumulative：`rounds.adversarial >= 2` 觸發 escalation `adversarial-deadlock`（review-loop §3.2）
+- 跨 cycle cumulative：`rounds.adversarial >= 3` 觸發 escalation `adversarial-deadlock`（review-loop §3.2）
 
-**4 輪上限只算 `rounds.reviewer`（cumulative）**；adversarial 自有 cap=2；producer cap=5 涵蓋 adversarial fail 觸發的重做。
+**4 輪上限只算 `rounds.reviewer`（cumulative）**；adversarial 自有 cap=3；producer cap=5 涵蓋 adversarial fail 觸發的重做。
 
 ### 5.4 Stage 內並行
 
@@ -397,7 +421,7 @@ Amendment 是 L0 holistic review pass 後、Step G 學習迴圈前的可選輕�
 - **不寫學習迴圈 memory**：lessons / patterns / sessions 仍綁原 brief Step G 觸發
 - **不重跑 L0 holistic review**：amendment pass 不影響 holistic 結果
 - **不改變 sub-brief.state**：amendment 全程 sub-brief.state=done，amendment 自身的 state 寫在 `amendments[]` 內
-- **次數軟限**：sub-brief 累積非 cancelled amendments：1 次 → 2 次需警告同意；≥ 3 次直接拒
+- **次數**：無上限；sub-brief 累積非 cancelled amendments 達 3 次起每次顯示軟提醒（不阻擋、無確認門檻，amendment.md §1.3）
 - **path boundary**：producer 寫超出 `plan.allowed_paths ∪ amendment.allowed_paths_delta` 視為 tool_error
 
 ### Main 在 Step F' 期間的狀態
@@ -524,6 +548,22 @@ block 不存在 = local-only（行為不變）。升流必經 Step 4 批准、�
 - `.framework/memory/patterns/**`（pattern）
 
 注意這四者分散在 `.claude/` 與 `.framework/` 兩個 root，不在同目錄下。
+
+### 8.7 機械可驗 claim 不盲轉、定稿前 path-lint 自驗
+
+Main 是**唯一沒有 reviewer 的角色**（producer → reviewer → adversarial 層層審；main 寫狀態、轉述 verdict、查狀態卻零審查）。機械可驗的事實（路徑存在 / repo 前綴 / 行號 / 數量 / enum 值）是 main 的最後防線，必自驗、不靠下游。這是 main 對自己「轉述 / 定稿」動作的縱深自驗，**非取代 reviewer 的 artifact 完整審核**——機械可驗事實值得多道閘門（producer §4 自驗、reviewer §5 核對、main 此節），不靠單點：
+
+- **不盲轉 verdict 的機械 claim**：reviewer verdict 列「N 處」「在 X 檔」「路徑 Y」等可機械驗 claim，轉述使用者或寫進 _manifest 前，main 先 `grep`/`Glob`/`ls` 抽驗。曾發生 reviewer 報「三處」、main 盲轉、實際僅一處的誇大連環。
+- **mv plan-draft → plan 定稿前 path-lint**：對 plan 內每個 `<repo>/<path>` 引用逐一 `Glob` 完整路徑（存在 + repo 前綴）；multi-repo 同名檔行號吻合 ≠ repo 吻合。發現錯 → 回 planner 修。本次三層連環失守缺的正是這道 control plane 機械閘門。
+
+### 8.8 狀態落地自驗、查空不單信（main 機械操作強制自驗）
+
+main 寫關鍵狀態檔、查狀態都是無 reviewer 兜底的機械操作，必強制自驗：
+
+- **狀態落地自驗**：寫關鍵狀態檔後，用**絕對路徑** `ls`/`cat` 確認「落在規範位置 + 內容對」。**建 brief 後必驗 `_active.yaml` 在 `.framework/briefs/_active.yaml`（briefs 根，非 brief 子目錄）**，對照 `core/batch-lock.md`。曾發生 `_active.yaml` 寫進 brief 子目錄 → `/brief-status` `/brief-approve` 從 root 找 lock 全抓不到、新 session 看不到 brief。
+- **查詢回空不單信**：`Glob`/`Grep`「No files found」是高風險信號（受 cwd / pattern 影響），關鍵結論用第二法（絕對路徑 `ls` / 換工具）交叉驗證再下定論。
+- **Bash cwd 紀律**：`cd` 在 Bash 工具內持久，會污染後續 `Glob` 相對路徑解析致誤報；`cd` 後須 cd 回主目錄，或用子 shell `(cd ...; ...)`，或一律絕對路徑。
+- **phase 轉換 self-check**：每個 phase 轉換點（建 brief / plan 定稿 / 批准 / 歸檔）跑「狀態檔位置 + schema + 落地」自驗清單，對照 `core/batch-lock.md`。
 
 ---
 

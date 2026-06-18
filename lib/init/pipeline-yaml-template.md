@@ -12,7 +12,7 @@
 # .framework/pipeline.yaml
 
 # 此檔案的 framework version（與 .framework/lib/VERSION 一致；framework 升級時 init 重生時更新）
-framework_version: "1.0.0"
+framework_version: "0.3.0"
 
 # 此 recipe 的 pipeline 集合
 # Key 是 pipeline 名稱（main 在 Explore 階段選擇要走哪條）
@@ -35,7 +35,7 @@ pipelines:
         # 可選：對抗式 second-pass 審核
         second_review: false     # true = checklist reviewer pass 後自動再 spawn 一次 reviewer with mode=adversarial（fresh 視角）
                                  #        雙過才算 stage pass；**per-stage 2x reviewer cost**（多 stage 全開 → 累計 N×2x）
-                                 #        Adversarial cap = 2 cumulative rounds（review-loop §3.2，避免無窮迴圈）
+                                 #        Adversarial cap = 3 cumulative rounds（review-loop §3.2，避免無窮迴圈）
                                  #        適合：高品質要求、code/plan 易被 producer self-narrative 框住
                                  # false（預設）= 單 pass。**注意：reviewer.md §5.x 對抗式視角仍會跑**——
                                  #        single-pass 已含一個 reviewer 內的對抗式檢查；second_review 只是再加 fresh 視角的第二人 review
@@ -71,7 +71,7 @@ triage_hints:
 ## 2. dev-team 預設範例
 
 ```yaml
-framework_version: "1.0.0"
+framework_version: "0.3.0"
 
 pipelines:
   new_feature:
@@ -124,7 +124,7 @@ triage_hints:
 ## 3. finance-advisory 範例（多 stage 範本）
 
 ```yaml
-framework_version: "1.0.0"
+framework_version: "0.3.0"
 
 pipelines:
   full_advisory:

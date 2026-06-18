@@ -28,22 +28,19 @@ Amendment 適用情境：
 
 不適用的場景應走 `/brief-cancel` + `/brief-new` 或回 Explore 改 plan。
 
-### 1.3 Amendment 上限 2 次（第 2 次需警告同意），第 3 次起強制走 plan
+### 1.3 Amendment 不設次數上限，第 3 次起軟提醒（不阻擋）
 
-同一個 sub-brief 累積 2 次 amendment 仍未滿意 → 強烈訊號：原 plan 不貼合需求。第 2 次 `/brief-amend` 觸發時，main 必須**先警告使用者**：
+amendment 層信任使用者作為 reviewer（§1.1）——小範圍修訂該能連續進行，**不設硬性次數上限、不強制拒**。守門靠「範圍 / 性質」（§1.2 的不適用條件：架構決策、跨模組、新依賴、新訪談、範圍過大），而非「次數」。
+
+但「連續多次 amendment」有時是「原 plan 不貼合需求」的訊號，故保留**軟提醒**：sub-brief 累積非 cancelled amendments 達 **3 次起**，每次 `/brief-amend` 觸發時 main 顯示一行提醒（**不阻擋、預設繼續**，無 y/N 門檻）：
 
 ```
-⚠️ 此 sub-brief 已進行 1 次 amendment。
-第 2 次 amendment 通常代表原 plan 規格本身需要調整。
-
-建議改走以下路徑之一：
-  (a) /brief-cancel 取消當前 brief，/brief-new 開新 brief
-  (b) 等本 brief 結束後，於下一個 brief 中改 plan
-
-仍要繼續 amendment？(y / N)
+ℹ️ 此 sub-brief 已進行 {n} 次 amendment。
+連續多次 amendment 有時代表原 plan 規格可再調整；若改動已偏大，可考慮 /brief-cancel 重開或於下個 brief 改 plan。
+（此為提醒，不阻擋——繼續進行 amendment。）
 ```
 
-預設 No。使用者明示 y 才繼續第 2 次。第 3 次起直接拒絕、強制走 plan 路徑。
+1-2 次靜默直接進 Step 1。軟提醒只提示、不需確認門檻、不拒絕；使用者自行判斷是否繼續或改走 plan。
 
 ---
 
@@ -70,7 +67,7 @@ Amendment 適用情境：
 | Sub-brief 已 done | `_tree.yaml.nodes.{sub_id}.state == done` |
 | Brief 尚未歸檔 | `.framework/briefs/{root}/` 仍在原位（未移至 `_archive/`）且控制面尚未進入 Step H |
 | Sub-brief 有可用 producer role | sub-brief.roster 內存在至少一個 `type: producer` 的 role |
-| Amendment 次數軟限 | 第 1 次無警告；第 2 次需使用者明示同意；第 3 次直接拒 |
+| Amendment 次數 | 無上限；1-2 次靜默，第 3 次起每次顯示軟提醒（不阻擋，§1.3） |
 
 任一條件不滿足 → 顯示具體原因並建議替代指令。
 
@@ -373,7 +370,7 @@ Amendment **不參與學習迴圈**：
 
 ### 7.5 與 `/brief-reopen`（Phase B）
 
-歸檔 brief 重啟後，可繼續 `/brief-amend`。次數計算延續歸檔前的紀錄（即若歸檔前已 1 次，重啟後第一次 amend 仍會觸發第 2 次警告）。
+歸檔 brief 重啟後，可繼續 `/brief-amend`。次數計算延續歸檔前的紀錄（即歸檔前已 N 次，重啟後仍從 N 起算軟提醒門檻，§1.3）。
 
 ---
 
@@ -391,8 +388,8 @@ Amendment 流程內最多 spawn 主要 producer 2 次（初始 + 1 次 ambiguity
 ### 8.4 不允許新依賴
 `needs_dependency` 在 amendment 層直接 reject。新依賴影響面廣，須走完整 plan 流程。
 
-### 8.5 第 2 次警告、第 3 次強制拒
-連續 amendment 達 2 次仍未滿意 → 警告；達 3 次直接拒。理由見 §1.3。
+### 8.5 不設次數上限，第 3 次起軟提醒
+amendment 不設硬性次數上限、不強制拒（信任使用者，§1.1）。累積 3 次起每次顯示軟提醒（不阻擋、無確認門檻）。守門改靠範圍 / 性質（§1.2），非次數。理由見 §1.3。
 
 ### 8.6 不參與學習迴圈
 Amendment 不寫 lessons / patterns / sessions。原 brief 的學習迴圈仍正常跑（綁原 brief 完成時觸發）。
@@ -408,7 +405,7 @@ Amendment 不算 sub-brief，不進 `_tree.yaml.nodes` 作為獨立節點，只�
 ## 9. 給接手 agent 的提醒
 
 - **Amendment 是「review 後的微調入口」，不是「快速通道」**：別讓使用者習慣把所有小改都丟 amendment 而跳過 plan
-- **第 2 次警告是必須的**：軟限制讓使用者意識到原 plan 可能有問題
+- **第 3 次起的軟提醒是必須的**：提醒（不阻擋）讓使用者意識到原 plan 可能有問題，但尊重使用者繼續小修的決定——不要把它變回硬性確認門檻或拒絕
 - **producer mode flag 預設無作用**：role md 不需特別處理 `mode: amendment`，除非該 role 的設計者明確要區分
 - **path boundary 在 amendment 層仍是硬限**：擴張要明示寫進 `allowed_paths_delta`、不可隱式
 - **使用者目視 review 失敗的處置**：使用者讀完 patch 不滿意 → 沒有「打回」流程，使用者自行決定（再 amend / cancel / 改 plan）

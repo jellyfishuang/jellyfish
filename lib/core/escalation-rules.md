@@ -94,7 +94,7 @@ Sub-brief {sub_id} 計畫進入 Execute，但偵測到高風險動作：
 | Sub-brief 試圖切 L2（違反 2 層限制） | e2r-tree §4.2：拒絕 + 升級 |
 | Schema 違規 retry 仍違規 | typed-interfaces 範例 |
 | Producer 連續 retry 仍 ambiguity / partial / decomposition | review-loop |
-| **Adversarial-deadlock**：`rounds.adversarial >= 2` 且仍 fail | review-loop §3.2；觸發 escalation tag `adversarial-deadlock`，建議使用者改該 stage `second_review: false` 後 `/framework-recover` 接續 |
+| **Adversarial-deadlock**：`rounds.adversarial >= 3` 且仍 fail | review-loop §3.2；觸發 escalation tag `adversarial-deadlock`，建議使用者改該 stage `second_review: false` 後 `/framework-recover` 接續 |
 
 ---
 

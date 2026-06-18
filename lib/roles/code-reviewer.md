@@ -51,7 +51,7 @@ worktree: required
 
 ## 4. 執行流程
 
-1. Read plan.md / engineer.output.md / engineer.diff-summary.md
+1. Read plan.md / brief.md（規格意圖，辨認 special case）/ engineer.output.md / engineer.diff-summary.md
 2. cd 進 .framework/worktrees/{sub_id}
 3. 跑第 5 章審核動作清單，每項記錄 evidence
 4. 任一 BLOCKING 項 fail → verdict: fail
@@ -73,7 +73,7 @@ worktree: required
 | 自評誠實 | 比對 engineer.output.md 與實際 diff | 自評描述與實際變動一致 |
 | **plan↔code 對齊** | 取 plan 介面契約 / 命名（型別名 / 函式名 / cmd 名 / struct 名）→ grep 實際 code | code 的對外命名與結構**與 plan 描述一致**；不一致 → fail（doc drift，未來 engineer 會被誤導）。例外：plan 明標「命名 engineer 自訂」 |
 | **跨檔 wiring 完整性** | 對本次新增 / 改名的 config key / env var / registration symbol，grep 其**所有應出現的 wiring 點**（例 config struct + reader + consumer + 註冊 map） | 所有 wiring 點都改到，無「加了 X 卻漏接 Y」。Evidence 列 grep 命中的每個 site 與其狀態 |
-| **註解紀律** | Read diff 內新增 / 改動的註解 | (a) 無 WHAT 註解（重述 code 在做什麼）；(b) 留下的註解確實對應**當前** code（無「code 改了註解沒改」的 drift）；(c) 業務 / WHY 註解正確。違反 → fail，列出冗餘或失準的註解位置 |
+| **註解紀律（量化）** | Read diff 內新增 / 改動的註解；對改動原始碼的註解行檢查標點 | (a) 無 WHAT 註解（重述 code 在做什麼）；(b) 留下的註解確實對應**當前** code（無「code 改了註解沒改」的 drift）；(c) 業務 / WHY 註解正確；(d) **無單一註解區塊 > 3 行**（決策敘述 / 歷史 / 「為何選 X / 取捨」應移 commit / brief，不留 code）；(e) **exported symbol 的 doc 註解 ≤ 1 行**；(f) **code 註解用半形標點**（無全形標點如 `（），、；：。「」！？`；限**註解行**，string literal 內合法全形不算）。違反 → fail，列位置 + 應移除 / 壓縮 / 改半形的具體行 |
 
 任一 fail → verdict: fail，於 checks[] 陣列填具體失敗項與 evidence。
 
@@ -88,7 +88,7 @@ worktree: required
 3. **四視角各看 diff 一次**（每視角至少寫 1-2 行 evidence）：
    - **Edge case 視角**：nil / empty / 0 / 負數 / overflow / Unicode / 並發 / 非預期輸入 / 邊界值會怎樣？
    - **整合視角**：被改的 public API 的 callers 都更新了嗎？跨檔耦合是否一致？被刪的程式碼有沒有遺漏 callsite？新增的 config / 註冊 / wiring 是否每個應出現的點都接上（不只改了 3 處漏了第 4 處）？
-   - **架構視角**：此 diff 引入的抽象 / 分層 / 結構，**與 plan 的架構決策一致嗎**？有沒有「為對齊既有 pattern 而強加的多餘層」或「只為 unit test 而存在的注入抽象（clock interface 之類）」這種 dead-weight 過度設計？命名 / 分層偏離 plan 描述算 architecture drift（屬 fail，不要留到 holistic 才抓）。
+   - **架構視角**：此 diff 引入的抽象 / 分層 / 結構，**與 plan 的架構決策一致嗎**？有沒有「為對齊既有 pattern 而強加的多餘層」或「只為 unit test 而存在的注入抽象（clock interface 之類）」這種 dead-weight 過度設計？命名 / 分層偏離 plan 描述算 architecture drift（屬 fail，不要留到 holistic 才抓）。**看到同類走不同路 / special case（例：A 路 error→fallback、B 路 error→保留）先查 brief 規格是否要求，規格決定的不對稱別當瑕疵報**。
    - **未來視角**：6 個月後修這段時會踩什麼坑？此次新增的 helper / 模式有沒有 hidden assumption？
 4. **找到 ≥1 個 real issue** → 整體 verdict: fail，於 `checks[]` 加 `{name: "adversarial.<perspective>", result: "fail", evidence: ...}`
 5. **真心找不到** → verdict 仍 pass，但 `summary` 必含「對抗式審視已跑：edge=X、integration=Y、architecture=Z、future=W 各角度看了」

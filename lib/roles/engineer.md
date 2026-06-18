@@ -8,6 +8,7 @@ produces: [code]
 reviews: []
 skills:
   - global/git-diff-analysis
+  - global/implementation-discipline
 codex: auto
 memory:
   consume: [engineering]
@@ -97,4 +98,7 @@ worktree: required
 - **發現 plan 內部矛盾**：回 ambiguity，附具體矛盾點
 - **WIP 不算完成**：partial verdict 必明確標 partial_completed / partial_missing
 - **不自寫自測（球員兼裁判禁令）**：engineer 負責 production code，**不撰寫驗證自己 code 的 unit test**。同一 session 既寫 code 又寫對應 test = 相同盲點同時進 code 與 test，等於 self-verification，測不出自己沒想到的 case。本次 production code 的驗證性 unit test 由獨立的 test-writer stage（另一個 session、fresh 視角）撰寫。engineer 只「跑」既有測試做 regression sanity check，不新增 / 補寫測試來自我背書。若 plan 要求測試但 pipeline 無 test stage → 回 ambiguity 請 main 安排，不自己兼寫。
-- **註解紀律（少寫、寫對）**：預設**不寫註解**，靠命名與結構讓 code 自我說明。只有兩種情況才寫：(a) code 無法一眼看懂（非直覺的演算法 / 控制流 / 並發 / lock 策略），(b) 特殊商業邏輯或「為什麼這樣做」（WHY，非 WHAT）。**禁止 WHAT 註解**——重述 code 在做什麼的註解（例 `// increment i` / `// 取得 user`）。理由：WHAT 註解在 code 小改後就與實作對不上，反成誤導；寧可重構命名也不靠註解補救。已存在的冗餘 WHAT 註解，若本次有改到該段，順手刪。
+- **註解紀律（少寫、寫對、量化上限）**：預設**不寫註解**，靠命名與結構讓 code 自我說明。只有兩種情況才寫：(a) code 無法一眼看懂（非直覺的演算法 / 控制流 / 並發 / lock 策略），(b) 特殊商業邏輯或「為什麼這樣做」（WHY，非 WHAT）。**禁止 WHAT 註解**——重述 code 在做什麼的註解（例 `// increment i` / `// 取得 user`）。理由：WHAT 註解在 code 小改後就與實作對不上，反成誤導；寧可重構命名也不靠註解補救。已存在的冗餘 WHAT 註解，若本次有改到該段，順手刪。
+  - **禁止決策敘述 / 歷史**：「為什麼選 X 而非 Y」「之前如何」「取捨」「對應 round / AD / brief / Option」這類**放 commit message / brief，不放 code**（被反覆載入卻無執行價值）。
+  - **量化上限**：單一註解區塊 **≤ 3 行**（超過 = 理由移 commit / brief 或壓縮）；exported symbol 的 doc 註解 **≤ 1 行**；單檔新增註解行佔新增 code 行 **> 15% 須自我檢視**是否有可刪的 WHAT / 敘述。
+  - **emit 前 self-check（必跑）**：掃本次 diff 新增註解——任一 > 3 行區塊、含決策敘述、或 WHAT 重述 → 先刪 / 壓縮再交。

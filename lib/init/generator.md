@@ -68,7 +68,7 @@ if free_form:
 4. 組裝成 single pipeline `default` with stages，每 stage = 1 producer + 1 reviewer
 5. 範例（roles: [engineer, code-reviewer]）—— **必含 pipeline-yaml-template.md §1 全部 top-level 欄位**：
    ```yaml
-   framework_version: "1.0.0"
+   framework_version: "0.3.0"
    pipelines:
      default:
        description: free-form 生成
@@ -176,6 +176,10 @@ last_updated_by: init
 
 ## 3. 已知陷阱
 
+（框架預設通用陷阱，所有 producer 適用——勿刪）
+- **引用既有檔 / symbol 必機械驗證，不靠記憶**：引用「既有檔路徑 / symbol 位置 / 出現數量」時，必 `Glob`/`grep` 對應 source 確認，不憑印象。**multi-repo 尤其注意**：跨 repo 同名檔常並存，**行號內容吻合 ≠ repo 前綴吻合**，必驗完整 `<repo>/<path>`。否定式 claim（「無 X」「不存在 Y」）須 grep 反證才寫；找得到但無 import 寫「存在但 dead code」。
+
+（以下為本專案 init 訪談補充）
 {Step 4 訪談中提到的「已知陷阱」}
 
 > Source: init / Confirmed: yes / Confidence: low

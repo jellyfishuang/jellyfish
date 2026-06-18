@@ -130,7 +130,7 @@ main 動作：
 |---|---|---|---|---|
 | `rounds.producer` | `pipeline_stages[i].rounds`（L1） | 同 producer 在當前 cycle 跑了幾次 | 5（per-producer per-cycle，避免無窮 retry） | Explore 重做時重置（fresh producer） |
 | `rounds.reviewer` | `pipeline_stages[i].rounds`（L1） | 同 stage 的 **checklist** reviewer 累計跑了幾次（不含 adversarial） | 4（cumulative，跨 Explore 重做不重置） | **僅 Brief cancel** |
-| `rounds.adversarial` | `pipeline_stages[i].rounds`（L1） | 同 stage 的 **adversarial** reviewer 累計跑了幾次（second_review=true 才有） | 2（cumulative） | **僅 Brief cancel** |
+| `rounds.adversarial` | `pipeline_stages[i].rounds`（L1） | 同 stage 的 **adversarial** reviewer 累計跑了幾次（second_review=true 才有） | 3（cumulative） | **僅 Brief cancel** |
 | `rounds.explore` | `nodes.{root_id}.rounds`（L0） | L0 Explore 跑了幾次 | 2（首次 + 重做 1 次） | **僅 Brief cancel** |
 | `rounds.l0_review` | `nodes.{root_id}.rounds`（L0） | L0 holistic review 跑了幾次 | 同 explore（每次 holistic fail = 一次 explore） | 同 rounds.explore |
 
@@ -142,13 +142,13 @@ main 動作：
 |---|---|
 | `rounds.reviewer == 2`（cumulative，且尚未 explore 過） | 回 Explore（2.2） |
 | `rounds.reviewer == 4`（cumulative，post-explore stage 再 fail 一次後達上限） | 強制升級（2.4） |
-| `rounds.adversarial >= 2` 且仍 fail | 強制升級（adversarial-deadlock，避免 checklist-pass / adversarial-fail 無窮迴圈） |
+| `rounds.adversarial >= 3` 且仍 fail | 強制升級（adversarial-deadlock，避免 checklist-pass / adversarial-fail 無窮迴圈） |
 | `rounds.explore >= 2` 且 post-replan stage 仍 fail | 強制升級（避免無窮 explore 迴圈） |
 | `rounds.producer >= 5`（含 adversarial 觸發的重做） | 強制升級 |
 
 **Adversarial 失敗的迴圈防護**：
-場景：checklist round 1 pass → adversarial round 1 fail → producer 重做 round N → checklist round 2 pass → adversarial round 2 fail。
-此時 `rounds.adversarial == 2` 達上限 → 強制升級（寫 escalation `adversarial-deadlock`）。
+場景：checklist round 1 pass → adversarial round 1 fail → producer 重做 → checklist round 2 pass → adversarial round 2 fail → producer 重做 → checklist round 3 pass → adversarial round 3 fail。
+此時 `rounds.adversarial == 3` 達上限 → 強制升級（寫 escalation `adversarial-deadlock`）。
 若使用者人介入後 unlock → 必須降到 single pass（`/framework-pipeline-edit` 改該 stage `second_review: false`）才能繼續。
 
 注意：
@@ -162,7 +162,7 @@ main 動作：
 
 ### 3.4 Micro-change 的對抗式 review 豁免（避免過度工程化）
 
-**問題**：對極小改動（單檔 ≤ N 行），`second_review: true` 的 adversarial reviewer 仍被要求「找出 ≥1 個 gap」。改動越小、真 gap 越少，reviewer 越會擠出 nuance 級的「gap」——其中多數是對該改動規模而言的 over-engineering。實測一個 2 行改動可被擠出 9 個 gap，6 個是過度設計，撞 `rounds.adversarial == 2` 上限後升級，成本遠大於效益。
+**問題**：對極小改動（單檔 ≤ N 行），`second_review: true` 的 adversarial reviewer 仍被要求「找出 ≥1 個 gap」。改動越小、真 gap 越少，reviewer 越會擠出 nuance 級的「gap」——其中多數是對該改動規模而言的 over-engineering。實測一個 2 行改動可被擠出 9 個 gap，6 個是過度設計，撞 adversarial 上限後升級，成本遠大於效益。
 
 **規則**：當本 stage 的實際改動規模低於門檻時，**自動跳過 adversarial second pass**（仍跑 §5 checklist + reviewer 內建的 §5.x 對抗式視角；只是不再 spawn 第二人 fresh-eyes adversarial）。
 
@@ -266,6 +266,9 @@ Round 4 升級時必寫詳細記錄，不只口頭通知。
 兩個位置（見 escalation-rules.md §1 lifecycle 表）：
 - 升級當下：`.framework/briefs/{root_id}/_escalations/{timestamp}-{reason}.md`（即時事件檔）
 - Brief 結束學習迴圈：mirror 摘要至 `.framework/memory/lessons/escalations/{root_id}-{sub_id}-{stage}.md`（永久紀錄）
+
+### 6.7 Fail evidence 的數量 / 位置須機械確認
+Reviewer 在 `checks[].evidence` 列「N 處」「在 X 檔 / Y 行」等可機械驗的 claim 時，必先 `grep`/`Glob` 確認再填，不憑印象報數量。誇大數量（如把 1 處錯報成 3 處）會被 main 盲轉給使用者、放大連環錯。三層各自把關：reviewer 此條 + `roles/planning-reviewer.md` §6「evidence 數量必機械確認」+ `core/control-plane.md` §8.7「main 不盲轉 verdict 機械 claim」。
 
 ---
 

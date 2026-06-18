@@ -2,7 +2,7 @@
 
 > 框架設計的完整入口文件。概念總覽見 [`../README.md`](../README.md)。
 >
-> 版本：0.2.0 · 最後更新：2026-05-21 · 逐版變更見 [`../CHANGELOG.md`](../CHANGELOG.md)
+> 版本：0.4.0 · 最後更新：2026-06-05 · 逐版變更見 [`../CHANGELOG.md`](../CHANGELOG.md)
 >
 > **0.2.0 修訂摘要**（基於約 10 個 dev-team brief 的實戰回饋）：
 > - **深度 review 提前**：code-reviewer 對抗式新增「架構視角」+ checklist 加 plan↔code 對齊 / 跨檔 wiring / 註解 三項機械檢查（攔截過去拖到 holistic / 逐行 review 才爆的架構、命名 drift、wiring 漏接）。
@@ -540,7 +540,7 @@ Pipeline 範例（完整 schema 見 `init/pipeline-yaml-template.md`）：
 
 ```yaml
 # .framework/pipeline.yaml
-framework_version: "1.0.0"
+framework_version: "0.3.0"
 pipelines:
   full_advisory:
     description: 完整顧問流程

@@ -36,34 +36,23 @@ allowed_tools: Read, Write, Edit, Glob, Grep, Bash, Task
 | 4 | `_tree.yaml.nodes.{sub_id}.state == done` | 「sub-brief `{sub_id}` 目前 state={state}，僅 done 的 sub-brief 可 amendment」 |
 | 5 | Brief 尚未進入歸檔（`.framework/briefs/{root}/` 仍在原位、控制面未進 Step H） | 「Brief 已歸檔。請用 `/brief-reopen` 重啟（Phase B 才實作）或 `/brief-new` 開新 brief」 |
 | 6 | Sub-brief.roster 含至少一個 producer-type role | 「sub-brief `{sub_id}` roster 內無 producer role；amendment 不適用，請 `/brief-cancel` 後改開新 brief」 |
-| 7 | Amendment 次數 | 見下方「次數警告」 |
+| 7 | Amendment 次數 | 無上限；見下方「次數軟提醒」 |
 
-### 次數警告
+### 次數軟提醒
 
-讀 `_tree.yaml.nodes.{sub_id}.amendments[]` 的非 cancelled 條目數：
+amendment **不設次數上限、不強制拒**（信任使用者，amendment.md §1.3）。讀 `_tree.yaml.nodes.{sub_id}.amendments[]` 的非 cancelled 條目數：
 
 ```
-0 次 → 直接進 Step 1
-1 次 → 顯示警告：
+0-1 次（即將成為第 1-2 次）→ 直接進 Step 1，靜默
+≥ 2 次（即將成為第 3 次起）→ 先顯示軟提醒，然後直接進 Step 1（不阻擋、無 y/N 門檻）：
 
-   ⚠️ 此 sub-brief 已進行 1 次 amendment。
-   第 2 次 amendment 通常代表原 plan 規格本身需要調整。
-
-   建議改走以下路徑之一：
-     (a) /brief-cancel 取消當前 brief，/brief-new 開新 brief
-     (b) 等本 brief 結束後，於下一個 brief 中改 plan
-
-   仍要繼續 amendment？(y / N)
-
-   使用者答 y → 進 Step 1；其他 → 中止
-
-≥ 2 次 → 直接拒絕：
-
-   ✗ 此 sub-brief 已進行 {n} 次 amendment，超過 amendment 層上限。
-   原 plan 不貼合需求的訊號很強，請改走：
-     - /brief-cancel + /brief-new 開新 brief
-   amendment 不再受理。
+   ℹ️ 此 sub-brief 已進行 {n} 次 amendment。
+   連續多次 amendment 有時代表原 plan 規格可再調整；
+   若改動已偏大，可考慮 /brief-cancel 重開或於下個 brief 改 plan。
+   （此為提醒，不阻擋——繼續進行 amendment。）
 ```
+
+註：守門改靠「範圍 / 性質」（amendment.md §1.2：架構決策 / 跨模組 / 新依賴 / 新訪談 / 範圍過大 → 仍應中止改走 plan），不靠次數。
 
 ## 對話流程
 
@@ -183,7 +172,7 @@ allowed_tools: Read, Write, Edit, Glob, Grep, Bash, Task
 詳情：.framework/briefs/{root}/sub-briefs/{sub_id}/amendments/{a_id}/
 
 請目視 review 變更內容。如需再修改：
-  - 再 amendment：/brief-amend {sub_id} "..."（注意已用 {n} 次）
+  - 再 amendment：/brief-amend {sub_id} "..."（已用 {n} 次；無上限，第 3 次起會有軟提醒）
   - 取消整個 brief：/brief-cancel
   - 接受並繼續：（無動作，可繼續 review 其他 sub-brief 或等 brief 歸檔）
 ```

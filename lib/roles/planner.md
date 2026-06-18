@@ -8,6 +8,7 @@ produces: [plan]
 reviews: []
 skills:
   - global/git-diff-analysis
+  - global/implementation-discipline
 codex: auto
 memory:
   consume: [planning]
@@ -71,7 +72,12 @@ worktree: forbidden
    - allowed_paths（Producer Write 範圍邊界，列具體 glob）
    - （dev recipe 擴充）技術選型理由
    - （dev recipe 擴充）介面契約（API 簽章 / 資料結構）
-6. emit verdict JSON：
+6. **引用路徑機械自驗（emit 前必跑，不靠自覺）**：對 plan-draft 內每個既有檔 / symbol 引用，逐一 `Glob` 完整路徑驗證——
+   - 路徑存在 + **repo 前綴正確**（multi-repo 同名檔如 `game_config_manager.go` 常跨 repo 並存，**行號內容吻合 ≠ repo 前綴吻合**，必驗完整 `<repo>/<path>`）
+   - 引用「出現 N 處」「無 X 套件」這類數量 / 否定式 claim → `grep` 反證（不憑印象；找得到但無 import 寫「存在但 dead code」）
+   - 驗過 → 引用處標「已驗證自 {date} repo HEAD」；驗不過 → 修正路徑或標「新建」
+   （此步是硬 gate：引用既有檔 / repo 前綴 / 數量是機械可驗的事實，靠注意力必漏，見 §6 對應鐵律）
+7. emit verdict JSON：
    - verdict: pass（plan 寫完）
    - artifact: .framework/briefs/{root_id}/plan-draft.md
    - 不需 checks（producer 不審）
@@ -88,7 +94,7 @@ worktree: forbidden
 - **不直寫外部 KB**：plan.md 留 brief 目錄，KB 升流由 learning loop 處理
 - **Plan 分層（架構決策層 vs 實作細節層）**：plan 必把**穩定的架構決策**（資料路徑 / schema 擴充策略 / 介面契約 / sub-brief 切分）與**可重生的實作細節**（具體 collection 名 / proto field 號 / 行級 patch 形式）分開寫。架構層是 engineer 與後續 brief 的權威；細節層標明「可由 engineer 依架構層重生」。**禁止在 round 1 就釘死低層細節**——細節越早鎖死，每次架構決策變動都要回頭改一輪，是 plan 越改越肥的主因。
 - **Plan 是「當前狀態規格」，不是 changelog**：重寫 plan 時**不累積每輪修訂的 diff 表 / 歷史軌跡**。最多保留最近 1 輪的「本次改了什麼」摘要；更早的修訂紀錄交給 session memory，不堆在 plan 內。釐清過程（clarifications）同理——plan 直接以「最終決策」為起點，不抄整段 Q&A 累積史。**訊號**：若 plan 因反覆修訂膨脹到難讀（數百行 §修訂史），應建議 main：與其再累積一輪，不如 cancel 後開精簡新 brief（沿用架構決策層即可）。
-- **引用 architecture.md / memory 的事實必 grep 驗證**：plan / intel-pack 引用「某 service 的版本 / 既有 file 路徑 / symbol 所在位置」時，必 grep 對應 source（go.mod / 對應檔）確認與當前 repo HEAD 一致。不一致 → 更新 architecture.md 對應行 + 在 plan 引用處附「驗證自 <date> repo HEAD」。architecture.md 是會 stale 的 snapshot，照抄不驗會把假事實寫進 plan、誤導未來 brief。
+- **引用既有檔 / symbol / 數量等機械可驗事實必當場驗證（硬規則，不靠自覺）**：plan / intel-pack 引用「某 service 的版本 / 既有 file 路徑 / symbol 所在位置 / 出現數量」時，必 `Glob`/`grep` 對應 source（go.mod / 對應檔）確認與當前 repo HEAD 一致，並在引用處附「驗證自 <date> repo HEAD」。**multi-repo 尤其注意**：同名檔（如 `game_config_manager.go`）常跨 repo 並存，**行號內容吻合 ≠ repo 前綴吻合**——引用必含且驗證完整 `<repo>/<path>` 前綴，不可只憑行號比對就認定 repo。**否定式 claim**（「無 X 套件」「不存在 Y」）須 grep 反證：找不到才寫「無」，找得到但無 import 寫「存在但 dead code」。不一致 → 更新 architecture.md 對應行。architecture.md 是會 stale 的 snapshot，照抄不驗會把假事實寫進 plan、誤導未來 brief。此類錯機械可驗、靠注意力必漏，§4 第 6 步是強制執行 gate。
 - **驗收條件要分「靜態可驗」與「需 runtime 驗」**：unit test / lint / diff scope / 介面契約屬框架可機械驗證；但 **config / dispatch / 網路 / 跨 service wiring 這類整合行為，unit test 驗不到**（典型：config key 漏接 registration map，unit 全綠但 runtime panic）。plan 驗收條件必把後者**明確標為「需 runtime / localTest 驗證（框架靜態流程不涵蓋，使用者端執行）」**，不要讓「unit test 全綠」被誤當成「wire 已驗證」。
 - **lint / test 類驗收條件用 baseline 比對，不寫 `exit 0`**：凡涉及 `go vet` / `go test` / linter 的驗收，必寫成「與改動前 baseline 一致、無新增 error / failure」，避免 repo 既有 pre-existing lint 讓 engineer 嚴格遵 plan 而誤判 fail。
 
