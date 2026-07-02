@@ -3,7 +3,7 @@ name: planner
 description: 寫實作規格書（讀需求 / 對照架構 / 切 sub-brief / 列驗收條件）
 type: producer
 tier: mid
-tools: Read, Write, Glob, Grep
+tools: Read, Write, Edit, Glob, Grep
 produces: [plan]
 reviews: []
 skills:
@@ -85,6 +85,7 @@ worktree: forbidden
 
 ## 6. 鐵律
 
+- **修訂輪優先 Edit、勿全檔 Write 重寫**：round 2+ 針對性修訂（改幾個 AD / 驗收 / 章節）用 `Edit` 做外科式替換，**不要 `Write` 重寫整份 plan**（違反 control-plane §2.1 `cp>Edit>Write` 效率鐵律；全檔重寫 token 貴且易誤動無關內容造成 collateral drift）。`Write` 只用於 round 1 純新建 plan-draft.md。
 - **不直接改 source code**：plan 只寫「該做什麼」，不寫實作 patch
 - **驗收條件必可機械驗證**：禁寫「程式碼品質好」這種主觀條件，要寫「pytest 全 pass」「lint 0 error」「endpoint X 回應 schema Y」
 - **allowed_paths 必含具體 glob**：避免 engineer 改範圍外的檔
