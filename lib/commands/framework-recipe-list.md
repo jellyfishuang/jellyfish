@@ -1,7 +1,7 @@
 ---
 name: framework-recipe-list
 description: 列出 framework 內建 recipes（read-only）
-allowed_tools: Read, Glob
+allowed-tools: Read, Glob
 ---
 
 # /framework-recipe-list
@@ -18,17 +18,12 @@ allowed_tools: Read, Glob
 ## 顯示範例
 
 ```
-Framework 內建 Recipes（6）：
+Framework 內建 Recipes（1；僅 dev-team，其餘 recipe 尚未實作）：
 
 ╭─────────────────────┬───────────────────────────────────────╮
 │ Name                │ 描述                                  │
 ├─────────────────────┼───────────────────────────────────────┤
 │ dev-team            │ 開發 / 寫 code / 修 bug               │
-│ research-team       │ 研究 / 分析 / 給建議                  │
-│ writing-team        │ 寫作 / 編輯                          │
-│ finance-advisory    │ 金融顧問（research + analysis + writing） │
-│ data-analytics      │ 數據分析                             │
-│ general-assistant   │ 通用助理                             │
 ╰─────────────────────┴───────────────────────────────────────╯
 
 當前專案使用的 recipe：dev-team

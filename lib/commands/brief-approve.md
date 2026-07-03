@@ -1,7 +1,7 @@
 ---
 name: brief-approve
 description: 批准當前 brief 的 plan，從 Explore 階段進入 Execute
-allowed_tools: Read, Write, Edit, Glob, Grep, Task
+allowed-tools: Read, Write, Edit, Glob, Grep, Task
 ---
 
 # /brief-approve

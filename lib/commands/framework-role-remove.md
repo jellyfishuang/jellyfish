@@ -1,7 +1,7 @@
 ---
 name: framework-role-remove
 description: 移除 role（含連帶 pipeline 影響檢查）
-allowed_tools: Read, Edit, Bash, Glob
+allowed-tools: Read, Edit, Bash, Glob
 ---
 
 # /framework-role-remove

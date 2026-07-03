@@ -1,7 +1,7 @@
 ---
 name: brief-new
 description: 開新 brief（短訪談 → 建 brief.md → 進入 Explore 階段）
-allowed_tools: Read, Write, Edit, Glob, Grep, Task
+allowed-tools: Read, Write, Edit, Glob, Grep, Task
 ---
 
 # /brief-new

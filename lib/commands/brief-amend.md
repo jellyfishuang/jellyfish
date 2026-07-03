@@ -1,7 +1,7 @@
 ---
 name: brief-amend
 description: 對已 done 的 sub-brief 做小範圍修訂（無 reviewer、使用者目視審查）
-allowed_tools: Read, Write, Edit, Glob, Grep, Bash, Task
+allowed-tools: Read, Write, Edit, Glob, Grep, Bash, Task
 ---
 
 # /brief-amend

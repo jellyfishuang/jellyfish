@@ -1,7 +1,7 @@
 ---
 name: framework-role-list
 description: 列出當前專案所有 role 與職責摘要
-allowed_tools: Read, Glob
+allowed-tools: Read, Glob
 ---
 
 # /framework-role-list

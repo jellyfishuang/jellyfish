@@ -196,7 +196,7 @@ amendments:
 **id 命名**：
 - 單字母 `a` 前綴 + 序號（與 sub-brief 字母 id 區隔）
 - 序號從 1 起、append-only（rejected / cancelled 仍佔號）
-- 同 sub-brief 累積非 cancelled amendments ≥ 2 觸發警告（見 amendment.md §1.3）；≥ 3 直接拒絕新 amendment
+- 同 sub-brief 累積非 cancelled amendments 不設次數上限；第 3 次起軟提醒不阻擋（見 amendment.md §1.3）
 
 **鐵律**：
 - amendment 不算 sub-brief 節點，不進 `nodes` map（只掛在所屬 sub-brief 節點的 `amendments[]`）

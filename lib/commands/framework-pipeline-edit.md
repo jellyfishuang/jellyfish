@@ -1,7 +1,7 @@
 ---
 name: framework-pipeline-edit
 description: 改 .framework/pipeline.yaml（加 stage / 改依賴 / 改 reviewer 配對）
-allowed_tools: Read, Edit, Glob
+allowed-tools: Read, Edit, Glob
 ---
 
 # /framework-pipeline-edit

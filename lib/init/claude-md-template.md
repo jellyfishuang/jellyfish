@@ -119,17 +119,14 @@
        h. cancelled brief / planning_only pipeline 不跑此 stage（無 runtime 可驗）
        i. brief_stages 區塊在 pipeline.yaml 缺失 → 跳過此步 + log warn
        j. **不打對外真外部 domain**：本 stage 的 simulator/mock 在 harness 範圍內運作；outbound 路徑用本機 mock server 取代
-[ ] 3. 跑 brief_stages.user_code_review（actor=user）：
-       a. main 跑 `git -C <affected_repo> diff --stat HEAD` + `git diff HEAD --name-only`
-       b. main 列關鍵改動點摘要（從 engineer.output.md / code-reviewer verdict 抽）
-       c. 使用者開 IDE 看詳細，對話回「過 / 不過 + 具體 issue list」
-       d. 寫 _tree.yaml.nodes.{root}.brief_stages.user_code_review = {state, comment}
-       e. fail 處理同 step 2.e（amendment / rollback / skip）
+[ ] 3.（per-sub-brief 制）user_code_review 與 unit_test 移至 per-sub-brief——sub-brief 完成當下就地跑
+       engineering → code-reviewer → architecture-reviewer → unit_test（plan 可 skip）→ user_code_review（actor=user），
+       全過該 sub-brief 才算 done；brief 層不再重跑 user_code_review
 [ ] 4. 寫 .framework/memory/sessions/{brief_id}.md 摘要（強制，無批准門檻、無條件）
-       Schema 見 .framework/lib/core/learning-loop.md § 4。含 local_test / user_code_review 結果。
-       若 step 4 在 step 2/3 之前寫過（main 提前寫），需在此補完。
+       Schema 見 .framework/lib/core/learning-loop.md § 4。含 local_test 與各 sub-brief user_code_review 結果。
+       若 step 4 在 step 2 之前寫過（main 提前寫），需在此補完。
 [ ] 5. 主動詢問品質評分（⭐ / ⚠️ / ❌ / 跳過）— 不要等使用者開口
-       **必在 local_test + user_code_review 雙 pass 後才問**——避免「評分時還不知道整合測試結果」
+       **必在 local_test pass + 各 sub-brief user_code_review 皆 pass 後才問**——避免「評分時還不知道整合測試結果」
 [ ] 6. Read .framework/briefs/{id}/_suggestions.json（若有），逐條顯示 suggest_* 給使用者：
        「提議寫入 .framework/memory/lessons/{cat}.md：'<text>' (y/n/edit)?」
        對 y / edit 的條目，main 直接寫 memory（**不需另開 brief**；不需 spawn planner 評估）
@@ -139,7 +136,7 @@
 ```
 
 **brief_stages 跑哪些**：依 `pipeline.yaml.pipelines.{recipe}.brief_stages`。
-- `new_feature` 預設含 `local_test` + `user_code_review`
+- `new_feature` 預設 brief 層僅 `local_test`（`user_code_review` / `unit_test` 為 per-sub-brief stage）
 - `bug_fix` / `planning_only` 預設不含（可在該 pipeline 顯式加 brief_stages 覆寫）
 - recipe 未定義 `brief_stages` / 無 local test harness → 整段跳過（step 2/3 略過，直接走 step 4）
 
@@ -153,17 +150,14 @@ brief_stages:
     completed_at: ISO ts
     result_summary: "使用者回報摘要"
     on_fail_choice: amendment | rollback | skip   # 僅 fail 時填
-  user_code_review:
-    state: pending | running | pass | fail | skipped
-    comment: "..."
-    on_fail_choice: amendment | rollback | skip   # 僅 fail 時填
+  # user_code_review 不在 brief_stages（per-sub-brief stage，記於各 sub-brief 節點）
 ```
 
 **容易犯的錯（必避免）**：
 - ❌ 「Verdict 全 pass，沒什麼好寫，跳過 sessions」→ Sessions 是歷史紀錄、不是評分產物
 - ❌ 「Pipeline 簡單（如 planning_only），跳過學習迴圈」→ 任何 brief 都跑此清單
 - ❌ 「Suggestions 需另開 brief 由 planner 評估」→ **錯**。學習迴圈 Step 4-5 內 user 批准後 main 直接寫
-- ❌ 「使用者沒問就不問品質」→ Step 3 必 main 主動詢問
+- ❌ 「使用者沒問就不問品質」→ Step 5 必 main 主動詢問
 - ❌ 漏更新 _manifest.md 的進度（Step 6/7/8 等檢核項）→ 執行中持續 append
 - ❌ 用 `state: l0_review_passed` / `state: passed` 等非 enum 值 → 用 `done`
 - ❌ 「Checklist reviewer pass = stage pass」→ **錯**。若 stage 設 `second_review: true`，stage pass = checklist pass + adversarial pass 雙過。Adversarial reviewer 由 main 在 checklist pass 後自動 spawn（`mode: adversarial`，依 `.framework/lib/core/control-plane.md` §5.3）

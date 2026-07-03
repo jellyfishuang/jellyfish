@@ -1,7 +1,7 @@
 ---
 name: framework-role-edit
 description: 對話式修改既有 role（也可直接編輯 .md 檔）
-allowed_tools: Read, Edit, Glob
+allowed-tools: Read, Edit, Glob
 ---
 
 # /framework-role-edit

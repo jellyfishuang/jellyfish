@@ -3,6 +3,26 @@
 記錄 framework lib（`D:\Claude\.framework\lib`）的版本演變。版號採 SemVer，對應日後的 git tag。
 版號真實來源＝`lib/VERSION`；各 repo 複製時以該檔為準。
 
+## 0.7.0 — 2026-07-03
+
+機械閘落地（hooks + scope gate）+ 外部審計修正回流。動因：SGC 部署實例做一次性外部審計（76 findings：文件 vs 實作矛盾 / 宣稱自動檢查但無機制在跑），確認框架所有「機械閘門 / BLOCKING」宣稱過去零 hook 零 script 兜底、純靠 LLM 自律，與「確定性慣例靠機械閘非 LLM 自律」原則相反。補上真實機制 + 同批文件矛盾修正。新增 `lib/hooks/` 與 `lib/scripts/` 兩個內容類別，屬新機制主題，minor bump。
+
+- **Claude Code hooks 三閘**（`lib/hooks/`，SGC 實戰經三輪對抗式驗證 pass 後去專案化回流）
+  - `bash_gate.py`（PreToolUse/Bash）：`docker rm/rmi/prune`（子指令位置判定）、`compose down -v` → deny；`compose down`、`git commit/push` → ask。比對前剝除引號/heredoc/跳脫序列、換行視同指令分隔、docker-compose 正規化、大小寫不敏感
+  - `path_gate.py`（PreToolUse/Write|Edit）：寫 `.framework/memory|codex`、`.claude/skills` → ask（`memory/sessions/` 例外——brief 收尾強制寫）；normpath + cwd join 防 `../`/雙斜線/相對路徑繞過。learning loop 合法寫入時權限提示本身即為批准點，免維護狀態檔
+  - `fullwidth_gate.py`（PostToolUse/Write|Edit）：`.go` 註解全形標點寫檔當下攔截回饋行號（剝 string/rune literal 後殘留必在註解，免解析註解結構；rune 用精確單字元文法防撇號假配對）
+  - 設計原則：deny 只給確定錯的、不確定一律 ask（不讓 agent 卡死空轉）；gate 內部錯誤 fail-open + 記 gate.log；hooks 對 subagent 工具呼叫同樣生效
+  - 部署模式：init/sync 複製 `*.py` → `.framework/hooks/`，hooks 區塊依 `hooks-config.template.json` 寫 `.claude/settings.json`（`_framework_managed_hooks` 鏡像供漂移比對）；62-case `run_tests.py` 回歸（改 gate 必跑）
+- **scope gate**（`lib/scripts/scope_check.py`）：multi-repo repo 級越界 / go.mod 偷升機械閘。三模式：無參數（讀 `_active.yaml` 解析 affected_repos 聯集，容忍粗體 markdown 格式）/ `--repos`（sub-brief 白名單）/ `--overlap`（batch-lock 開 brief 前重疊檢查）。exit 2=違規、1=用法錯誤（空參數拒 fail-open）。diff 基準 working tree vs HEAD（engineer 不 commit，`main...HEAD` 恆空=檢查空轉，SGC 實戰 4 次 lesson 的根因收斂）。repo 前綴 `PREFIX` 常數落地時調整
+- **審計修正**：
+  - 全 21 個 command 檔 frontmatter `allowed_tools` → `allowed-tools`（舊 key 無效 = 工具限制從未生效，含 framework-recall 宣稱的唯讀）
+  - `core/e2r-tree.md` amendment「≥3 直接拒絕」→ 無上限 + 軟提醒（對齊 amendment.md §1.3 既定政策）
+  - `init/claude-md-template.md` forward-port per-sub-brief review 制（brief 層只剩 local_test；step 3/4/5 + schema + 交叉引用同步）
+  - `core/batch-lock.md` §2.2 建 brief 前 `--overlap` 重疊機械閘（防平行/殘留互蓋）
+  - `commands/framework-status.md` 版本範例改「以 lib/VERSION 為準」；`framework-recipe-list.md` 範例改實況（1 recipe）
+  - review skills ×2 補 worktree-disabled override 引言（diff HEAD 基準 + `??` untracked——engineer 不 stage 時新檔全盲是對抗驗證抓到的兩道閘共同盲區）
+- 設計來源：SGC 外部審計（2026-07-03，76 findings 逐條裁決）；hooks 三輪、scope gate 二輪對抗式 agent 驗證全 pass 後回流
+
 ## 0.6.0 — 2026-06-17
 
 架構速覽（design sketch）+ 條件式 ack 閘。動因：SGC 部署實例（brief `2026-06-11-hot-lobby-api`）出現一個架構洩漏——gateway 建兩個下游 client、未復用既有連線——**通過 code-review 與 adversarial arch-review（被歸 advisory 默默記錄），使用者目視 user_code_review 才發現、回頭走 amendment 收斂**。根因：advisory finding 清單會埋掉「形狀」問題，形狀問題（如新增與既有功能重疊的元件而未復用）不主動浮給使用者。新增 1 個 verdict schema 欄 + 新的 arch-review 輪末投遞機制（條件式 ack 閘），跨 2 檔，屬新機制主題，故 minor bump。

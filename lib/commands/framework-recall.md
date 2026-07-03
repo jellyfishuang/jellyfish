@@ -1,7 +1,7 @@
 ---
 name: framework-recall
 description: 唯讀查詢外部知識庫（KB）參考其他 repo 的既有紀錄；結果折進當前 brief 的 intel-pack
-allowed_tools: Read, Glob, Grep
+allowed-tools: Read, Glob, Grep
 ---
 
 # /framework-recall
@@ -57,7 +57,7 @@ Framework 落地在各 repo、各自維護 local `.framework/memory`；外部 KB
 
 ## 不做的事
 
-- **不寫回 KB**：本命令唯讀（allowed_tools 無 Write / Edit）。寫 KB 走 learning loop 升流 `(m)` 或使用者透過該 KB 自身的入口手動寫
+- **不寫回 KB**：本命令唯讀（allowed-tools 無 Write / Edit）。寫 KB 走 learning loop 升流 `(m)` 或使用者透過該 KB 自身的入口手動寫
 - **不存進 local memory**：撈回的是 reference，不是 ingest；不寫 `.framework/memory/`
 - **不自動觸發**：只有使用者明確下 `/framework-recall` 才查；planner / 其他 role 不得自行呼叫
 - **沒接 KB 不報錯**：`recall != true` 直接回提示

@@ -1,7 +1,7 @@
 ---
 name: framework-status
 description: 顯示 framework 啟用狀態、recipe、roles、active brief、trust mode
-allowed_tools: Read, Glob
+allowed-tools: Read, Glob
 ---
 
 # /framework-status
@@ -38,7 +38,7 @@ Framework 狀態
 ==========================================
 
 啟用狀態：✓ 已啟用
-框架版本：0.4.0
+框架版本：0.6.0（範例值；實際以 .framework/lib/VERSION 為準）
 初始化時間：2026-05-04 14:30
 Recipe：dev-team
 Trust mode：standard

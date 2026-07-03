@@ -1,0 +1,27 @@
+{
+  "_usage": "部署時將 {PYTHON} 換成實體 Python 3 路徑、{PROJECT_ROOT} 換成專案根絕對路徑 (forward slash), 合併進 <專案>/.claude/settings.json 並同步一份到 _framework_managed_hooks",
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          { "type": "command", "command": "{PYTHON} {PROJECT_ROOT}/.framework/hooks/bash_gate.py", "timeout": 10 }
+        ]
+      },
+      {
+        "matcher": "Write|Edit|MultiEdit",
+        "hooks": [
+          { "type": "command", "command": "{PYTHON} {PROJECT_ROOT}/.framework/hooks/path_gate.py", "timeout": 10 }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit|MultiEdit",
+        "hooks": [
+          { "type": "command", "command": "{PYTHON} {PROJECT_ROOT}/.framework/hooks/fullwidth_gate.py", "timeout": 15 }
+        ]
+      }
+    ]
+  }
+}

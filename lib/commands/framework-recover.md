@@ -1,7 +1,7 @@
 ---
 name: framework-recover
 description: 從中斷的 brief 接續（殭屍 _active.yaml / 4 輪上限 failed sub-brief）
-allowed_tools: Read, Write, Edit, Bash, Glob, Grep, Task
+allowed-tools: Read, Write, Edit, Bash, Glob, Grep, Task
 ---
 
 # /framework-recover

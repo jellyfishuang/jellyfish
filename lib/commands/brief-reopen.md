@@ -1,7 +1,7 @@
 ---
 name: brief-reopen
 description: 重啟已歸檔 / 已取消的 brief
-allowed_tools: Read, Write, Edit, Bash, Glob, Task
+allowed-tools: Read, Write, Edit, Bash, Glob, Task
 ---
 
 # /brief-reopen

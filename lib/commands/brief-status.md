@@ -1,7 +1,7 @@
 ---
 name: brief-status
 description: 顯示當前 active brief 進度與近期完成 brief
-allowed_tools: Read, Glob, Grep
+allowed-tools: Read, Glob, Grep
 ---
 
 # /brief-status

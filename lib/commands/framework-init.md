@@ -1,7 +1,7 @@
 ---
 name: framework-init
 description: 初始化 framework（從 recipe 選擇 + 客製問題 + 產出 .claude/ 結構）
-allowed_tools: Read, Write, Edit, Bash, Glob, Grep
+allowed-tools: Read, Write, Edit, Bash, Glob, Grep
 ---
 
 # /framework-init

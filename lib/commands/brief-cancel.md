@@ -1,7 +1,7 @@
 ---
 name: brief-cancel
 description: 取消當前 active brief（含 worktree / lock 處置）
-allowed_tools: Read, Write, Edit, Bash, Glob
+allowed-tools: Read, Write, Edit, Bash, Glob
 ---
 
 # /brief-cancel

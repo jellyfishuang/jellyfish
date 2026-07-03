@@ -9,6 +9,8 @@ last_updated: 2026-05-06
 
 # Code Review Checklist
 
+> **Worktree-disabled 模式 override（必先讀）**：若專案 worktree=false 且 engineer 不 commit 不 stage——diff 基準一律 working tree vs `HEAD`（`git -C <repo> diff HEAD`），新檔看 `git -C <repo> status --porcelain` 的 `??` 行；本文所有 `main...HEAD` / `main..HEAD` / commit log 檢查僅適用 worktree 模式，以專案 .claude/agents 的 override 章節為準。
+
 機械化的 code review 流程。每項都是 yes/no 判斷，不是主觀評估。任一失敗即 `verdict: fail`，於 `checks[]` 列具體 evidence。
 
 ## 1. Diff 範圍對齊

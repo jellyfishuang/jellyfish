@@ -1,7 +1,7 @@
 ---
 name: framework-permissions-sync
 description: 強制重新同步 Claude Code permissions 與 framework trust mode
-allowed_tools: Read, Edit, Write
+allowed-tools: Read, Edit, Write
 ---
 
 # /framework-permissions-sync

@@ -1,7 +1,7 @@
 ---
 name: framework-trust-set
 description: 切換 trust mode（strict / standard / sandbox）
-allowed_tools: Read, Edit
+allowed-tools: Read, Edit
 ---
 
 # /framework-trust-set

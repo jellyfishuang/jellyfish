@@ -1,7 +1,7 @@
 ---
 name: framework-unlock
 description: 強制清除 _active.yaml（緊急 escape hatch；含警告）
-allowed_tools: Read, Bash
+allowed-tools: Read, Bash
 ---
 
 # /framework-unlock

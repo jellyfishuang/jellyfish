@@ -52,7 +52,7 @@ trust_mode: standard
 
 ### 2.2 寫入時機
 
-- 建立 brief（`/brief-new` 完成 brief.md 後）→ 建立 _active.yaml
+- 建立 brief（`/brief-new` 完成 brief.md 後）→ **先跑重疊機械閘** `python .framework/scripts/scope_check.py --overlap <預估 affected_repos 逗號串>`：非空交集（與 active brief 範圍或殘留 dirty 工作樹重疊；無 active brief 時只驗 dirty 殘留）→ 顯示給使用者確認後才建 _active.yaml（防平行/殘留互蓋）→ 建立 _active.yaml
 - 階段轉換（exploring → awaiting_approval / executing / reviewing / learning）→ 更新 `phase`
 - 任何 main 動作（spawn role / 寫 verdict / 訪談題數變化）→ 更新 `last_heartbeat` + 對應欄位
 - Brief 完成 / 取消 → 刪除 _active.yaml

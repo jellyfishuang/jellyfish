@@ -1,7 +1,7 @@
 ---
 name: framework-learn
 description: 補處理已歸檔 brief 的 _suggestions / ad-hoc 加 lesson / pattern（無需開新 brief）
-allowed_tools: Read, Write, Edit, Glob, Grep
+allowed-tools: Read, Write, Edit, Glob, Grep
 ---
 
 # /framework-learn

@@ -1,7 +1,7 @@
 ---
 name: brief-import
 description: 從 GitHub Issue / 外部來源匯入 brief
-allowed_tools: Read, Write, Edit, Bash, Glob, WebFetch, Task
+allowed-tools: Read, Write, Edit, Bash, Glob, WebFetch, Task
 ---
 
 # /brief-import

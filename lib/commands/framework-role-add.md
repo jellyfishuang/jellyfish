@@ -1,7 +1,7 @@
 ---
 name: framework-role-add
 description: 對話式新增 role（問名稱 / 類型 / 職責 / skill / 檢查清單 / tools）
-allowed_tools: Read, Write, Glob
+allowed-tools: Read, Write, Glob
 ---
 
 # /framework-role-add
