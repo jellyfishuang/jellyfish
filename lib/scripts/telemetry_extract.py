@@ -9,6 +9,7 @@
   2. 完整性檢查: 每個 code sub-brief (有 stages/engineering/) 須有 >=1 code-reviewer verdict
      + reviews/user_review.json; brief root 有 plan.md 則須 >=1 planning-reviewer verdict。
      缺 → 列缺檔清單 exit 2 (--force 降為警告續抽; --check-only 只檢不寫)
+     另檢 code sub-brief 的 artifacts/*.patch 工作成果快照 (patch_dump.py 產) — 缺僅 WARN 不擋 (過渡期)
   3. 抽取為 gate-run rows append 至 .framework/memory/telemetry/gate_runs.jsonl
      (同 brief_id + source=live 舊列先清 → 重跑冪等)
 
@@ -148,14 +149,19 @@ def scan(brief_dir):
                 if row["sub_brief"]:
                     sub_has_user.add(row["sub_brief"])
 
+    warnings = []
     for sub in sorted(sub_has_code):
         if sub not in sub_has_required:
             missing.append(f"sub-briefs/{sub}: 缺 {REQUIRED_SUB_GATE} verdict (*.verdict.json)")
         if sub not in sub_has_user:
             missing.append(f"sub-briefs/{sub}: 缺 reviews/user_review.json")
+        art = os.path.join(brief_dir, "sub-briefs", sub, "artifacts")
+        has_patch = os.path.isdir(art) and any(f.endswith(".patch") for f in os.listdir(art))
+        if not has_patch:
+            warnings.append(f"sub-briefs/{sub}: 缺 artifacts/*.patch 工作成果快照 (patch_dump.py; 過渡期僅警告)")
     if root_has_plan and not root_has_planning_verdict:
         missing.append(f"brief root: 有 plan.md 但缺 {REQUIRED_PLANNING_GATE} verdict")
-    return rows, missing
+    return rows, missing, warnings
 
 
 def write_rows(out_path, brief_id, rows):
@@ -188,7 +194,9 @@ def main():
     if not os.path.isdir(a.brief_dir):
         print(f"brief_dir 不存在: {a.brief_dir}", file=sys.stderr)
         return 1
-    rows, missing = scan(a.brief_dir)
+    rows, missing, warnings = scan(a.brief_dir)
+    for w_ in warnings:
+        print(f"WARN {w_}", file=sys.stderr)
     if missing:
         print("verdict 落檔完整性檢查未過:", file=sys.stderr)
         for m in missing:

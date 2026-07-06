@@ -125,6 +125,10 @@
        ⚠️ user_code_review 收 stage 時 main 必寫 sub-briefs/{sub}/reviews/user_review.json：
        {"gate":"user_code_review","spec_id":"...","result":"pass|fail","findings":[{"desc","severity":null|"MAJOR"|"MINOR","disposition":"fixed_inline|amendment|debt|rejected"}]}
        findings 空陣列也要寫（zero-finding 是遙測分母）——這是 gate 遙測中最貴一道閘的唯一結構化資料源
+       ⚠️ sub-brief done 時 main 對每個 affected repo 跑工作成果快照：
+       `python .framework/scripts/patch_dump.py <repo_dir> sub-briefs/{sub}/artifacts/<repo>.patch`
+       （臨時 index 產含 untracked 的 --binary patch、不碰真實 index；engineer 不 commit 時 working tree 是唯一副本，
+        patch 使成果可獨立恢復；歸檔檢查缺 patch 出 WARN）
 [ ] 4. 寫 .framework/memory/sessions/{brief_id}.md 摘要（強制，無批准門檻、無條件）
        Schema 見 .framework/lib/core/learning-loop.md § 4。含 local_test 與各 sub-brief user_code_review 結果。
        若 step 4 在 step 2 之前寫過（main 提前寫），需在此補完。

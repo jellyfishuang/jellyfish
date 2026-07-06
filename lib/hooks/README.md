@@ -24,4 +24,5 @@ Source of truth。部署 = 跑 `/framework-hooks-sync`（確定性機械流程 `
 - `path_gate` / `fullwidth_gate`：Bash `echo > file` 重導向寫檔繞得過（framework role 均用 Write/Edit，暫不追）。
 - 回歸測試：同目錄 `run_tests.py`（62 case，含三輪對抗式驗證的全部回饋案例；fixture 於執行時自建於 temp）。改任一 gate script 後必跑：`python run_tests.py`，期望 FAILURES: 0。
 - `hooks_sync.py` 生命週期測試：`lib/scripts/hooks_sync_tests.py`（fake root：fresh / idempotent / user hook 保留 / 壞 JSON 拒寫 / dry-run）。改 hooks_sync.py 後必跑，期望 TOTAL FAILURES: 0。
-- gate 遙測測試：`lib/scripts/telemetry_tests.py`（fake brief fixture：抽取 / 冪等 / 缺檔 exit 2 / --force / --check-only / 報表）。改 telemetry_extract.py / telemetry_report.py 後必跑，期望 TOTAL FAILURES: 0。
+- gate 遙測測試：`lib/scripts/telemetry_tests.py`（fake brief fixture：抽取 / 冪等 / 缺檔 exit 2 / --force / --check-only / 報表 / 缺 patch WARN）。改 telemetry_extract.py / telemetry_report.py 後必跑，期望 TOTAL FAILURES: 0。
+- patch dump 測試：`lib/scripts/patch_dump_tests.py`（fixture git repo：tracked 改/刪 + untracked 巢狀 + binary + ignored 排除 / 真實 index 零改變 / apply 還原一致 / 空變更）。改 patch_dump.py 後必跑，期望 TOTAL FAILURES: 0。

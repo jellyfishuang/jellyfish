@@ -12,6 +12,9 @@ PY = sys.executable
 HERE = os.path.dirname(os.path.abspath(__file__))
 EXTRACT = os.path.join(HERE, "telemetry_extract.py")
 REPORT = os.path.join(HERE, "telemetry_report.py")
+ENV = dict(os.environ, PYTHONIOENCODING="utf-8")  # 子行程 stdout/stderr 固定 utf-8, 供字串斷言
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(errors="replace")  # cp950 console 印 detail 不炸
 
 root = tempfile.mkdtemp(prefix="telemetry_fake_")
 brief = os.path.join(root, ".framework", "briefs", "2026-01-01-fake-brief")
@@ -34,7 +37,7 @@ def w(rel, obj):
 
 
 def run(*args):
-    return subprocess.run([PY, EXTRACT, brief, *args],
+    return subprocess.run([PY, EXTRACT, brief, *args], env=ENV,
                           capture_output=True, text=True, encoding="utf-8", errors="replace")
 
 
@@ -97,10 +100,18 @@ check("T5 check-only 不寫", r5.returncode == 0 and not os.path.exists(OUT))
 # T6: report
 run("--force")
 r6 = subprocess.run([PY, REPORT, "--jsonl", OUT], capture_output=True, text=True,
-                    encoding="utf-8", errors="replace")
+                    encoding="utf-8", errors="replace", env=ENV)
 check("T6 report exit 0", r6.returncode == 0, r6.stderr[:300])
 check("T6 report 內容", "user_code_review" in r6.stdout and "code-reviewer" in r6.stdout
       and "MAJOR:1" in r6.stdout, r6.stdout[:400])
+
+# T7: 缺 artifacts/*.patch → WARN 不擋; 補 patch 後該 sub 的 WARN 消失
+r7 = run("--check-only", "--force")
+check("T7 缺 patch WARN", r7.returncode == 0 and "sub-briefs/a: 缺 artifacts/*.patch" in r7.stderr, r7.stderr[:300])
+os.makedirs(os.path.join(brief, "sub-briefs", "a", "artifacts"), exist_ok=True)
+open(os.path.join(brief, "sub-briefs", "a", "artifacts", "repo.patch"), "w", encoding="utf-8").write("")
+r7b = run("--check-only", "--force")
+check("T7 有 patch 無 WARN", "sub-briefs/a: 缺 artifacts" not in r7b.stderr, r7b.stderr[:300])
 
 print(f"TOTAL FAILURES: {fails}")
 shutil.rmtree(root, ignore_errors=True)

@@ -3,6 +3,16 @@
 記錄 framework lib（`D:\Claude\.framework\lib`）的版本演變。版號採 SemVer，對應日後的 git tag。
 版號真實來源＝`lib/VERSION`；各 repo 複製時以該檔為準。
 
+## 0.9.0 — 2026-07-06
+
+工作成果快照（patch dump）。動因：engineer 不 commit（使用者親管 git），sub-brief 完成後成果只存在 uncommitted working tree——唯一副本，errant checkout / 平行 sub-brief 誤動 / 測試臨時 patch revert 意外即滅失；user review 對象也隨 tree 漂移。新耐久化機制主題，minor bump。
+
+- **`lib/scripts/patch_dump.py`**：臨時 index（GIT_INDEX_FILE）read-tree HEAD → add -A → diff --binary --cached——產含 untracked 新檔（尊重 .gitignore）+ binary 內容的完整可 apply patch；**不碰真實 index / stage / working tree**；無變更寫空檔（供存在性檢查）
+- **收尾接線**（claude-md-template step 3）：sub-brief done 時 main 對每個 affected repo dump 至 `sub-briefs/{sub}/artifacts/<repo>.patch`；兼作 user_code_review 穩定審查快照
+- **`telemetry_extract.py`**：完整性檢查加 code sub-brief 缺 `artifacts/*.patch` → WARN（過渡期不擋，避免對既有 in-flight brief 誤傷；穩定後可升 exit 2）
+- **`lib/scripts/patch_dump_tests.py`**：12 檢查（tracked 改/刪 / untracked 巢狀 / binary / ignored 排除 / 真實 index 零改變 / clean clone apply 還原一致 / 空變更 / 非 repo）；telemetry_tests 增至 15（+缺 patch WARN×2）；測試子行程統一 `PYTHONIOENCODING=utf-8`（Windows cp950 console 斷言修正）
+- 設計來源：SGC 部署實例首跑即攔到真實敞口（active brief 待審 sub-brief 有 8 檔未 commit 變更，dump 後 reverse-apply 驗證精確）；外部模型審視「八點建議」#4
+
 ## 0.8.0 — 2026-07-06
 
 Gate 遙測（流程有效性量測）。動因：框架品質閘豐富（一個 code sub-brief 從 plan 到收尾 6–8 道）但零流程數據——哪道閘攔到多少唯一真缺陷、哪道只在燒輪次，無從得知；砍閘靠感覺、加閘沒煞車。同批修正 verdict 落檔矛盾：§2 表寫「subagent 寫 verdict」但 reviewer 無 Write 工具、§6.3 又要 main 落檔——兩規則打架的結果是誰都沒寫（SGC 20 個歸檔 brief 僅 2 個留 verdict 檔）。新遙測機制主題，minor bump。
