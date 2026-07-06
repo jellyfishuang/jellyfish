@@ -3,6 +3,10 @@
 記錄 framework lib（`D:\Claude\.framework\lib`）的版本演變。版號採 SemVer，對應日後的 git tag。
 版號真實來源＝`lib/VERSION`；各 repo 複製時以該檔為準。
 
+## 0.10.1 — 2026-07-06
+
+遙測判讀觸發機械化。動因：報表判讀原靠「memory 載入提醒 + 人記得」——提示紀律非機械閘。補完：`telemetry_extract.py` 每次歸檔跑完抽取後自動印「遙測觸發狀態: live briefs N/{門檻} | draft 樣本 M/{門檻}」，達門檻印 `>>> 已達判讀門檻 … 依 memory/experiments/ runbook 執行`。門檻為 script 頂部常數（LIVE_READ_TRIGGER=10 / DRAFT_TRIAL_TRIGGER=3）。telemetry_tests 增至 17（+觸發狀態行×2）。無新機制主題，patch bump。
+
 ## 0.10.0 — 2026-07-06
 
 訪談改制：Draft+Redline 理解草稿（預設）。動因：訪談歷史 8-22 輪且使用者多數答「採推薦」——多數題目是確認非決策，單題制把使用者注意力花在儀式上；gate 遙測 baseline 另示 planning-reviewer fail 率 45%（plan 初稿品質是最大返工源，訪談品質是其直接上游）。新模式主題，minor bump。

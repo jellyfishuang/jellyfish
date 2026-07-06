@@ -28,6 +28,8 @@ import sys
 
 REQUIRED_PLANNING_GATE = "planning-reviewer"   # root 有 plan.md 時要求
 REQUIRED_SUB_GATE = "code-reviewer"            # code sub-brief 要求
+LIVE_READ_TRIGGER = 10    # live brief 數達此值 → 提示跑 gate 遙測首讀 (memory/experiments/)
+DRAFT_TRIAL_TRIGGER = 3   # sessions 含 draft_cycles 數值的樣本數達此值 → 提示跑試跑判讀
 SEVERITY_PAT = re.compile(r"\b(BLOCKER|CRITICAL|MAJOR|MINOR)\b", re.IGNORECASE)
 SEVERITY_ORDER = ["BLOCKER", "CRITICAL", "MAJOR", "MINOR"]
 
@@ -212,7 +214,43 @@ def main():
     out = resolve_out(a.brief_dir, a.out)
     write_rows(out, os.path.basename(os.path.normpath(a.brief_dir)), rows)
     print(f"寫入: {out}")
+    print_trigger_status(out)
     return 0
+
+
+def print_trigger_status(out_path):
+    """歸檔時機械提示實驗判讀門檻 (不靠人記得)。experiments runbook 見 memory/experiments/。"""
+    try:
+        live = set()
+        if os.path.isfile(out_path):
+            for line in open(out_path, encoding="utf-8"):
+                try:
+                    r = json.loads(line)
+                except ValueError:
+                    continue
+                if r.get("source") == "live":
+                    live.add(r.get("brief_id"))
+        mem = os.path.dirname(os.path.dirname(out_path))  # memory/
+        sess_dir = os.path.join(mem, "sessions")
+        drafts = 0
+        if os.path.isdir(sess_dir):
+            for f in os.listdir(sess_dir):
+                if not f.endswith(".md"):
+                    continue
+                head = open(os.path.join(sess_dir, f), encoding="utf-8").read(2000)
+                if re.search(r"^draft_cycles:\s*\d+", head, re.MULTILINE):
+                    drafts += 1
+        print(f"遙測觸發狀態: live briefs {len(live)}/{LIVE_READ_TRIGGER} (gate 首讀) | "
+              f"draft 樣本 {drafts}/{DRAFT_TRIAL_TRIGGER} (紅筆試跑判讀)")
+        hits = []
+        if len(live) >= LIVE_READ_TRIGGER:
+            hits.append("gate 遙測首讀")
+        if drafts >= DRAFT_TRIAL_TRIGGER:
+            hits.append("draft+redline 試跑判讀")
+        if hits:
+            print(f">>> 已達判讀門檻: {' + '.join(hits)} — 依 memory/experiments/ 對應 runbook 執行, 並知會使用者")
+    except OSError as e:
+        print(f"WARN 觸發狀態計算失敗 (不影響抽取): {e}", file=sys.stderr)
 
 
 if __name__ == "__main__":

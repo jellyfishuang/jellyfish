@@ -113,6 +113,18 @@ open(os.path.join(brief, "sub-briefs", "a", "artifacts", "repo.patch"), "w", enc
 r7b = run("--check-only", "--force")
 check("T7 有 patch 無 WARN", "sub-briefs/a: 缺 artifacts" not in r7b.stderr, r7b.stderr[:300])
 
+# T8: 觸發狀態行（機械提示，不靠人記得）
+r8 = run("--force")
+check("T8 觸發狀態行", r8.returncode == 0 and "遙測觸發狀態" in r8.stdout, r8.stdout[-300:])
+# 造 3 份含 draft_cycles 的 sessions → 達 draft 門檻提示
+sess = os.path.join(root, ".framework", "memory", "sessions")
+os.makedirs(sess, exist_ok=True)
+for i in range(3):
+    open(os.path.join(sess, f"2026-01-0{i+1}-x.md"), "w", encoding="utf-8").write(
+        f"---\nid: x{i}\ndraft_cycles: {i+1}\n---\n")
+r8b = run("--force")
+check("T8 達門檻提示", "已達判讀門檻" in r8b.stdout and "試跑判讀" in r8b.stdout, r8b.stdout[-300:])
+
 print(f"TOTAL FAILURES: {fails}")
 shutil.rmtree(root, ignore_errors=True)
 sys.exit(1 if fails else 0)
