@@ -24,7 +24,8 @@ allowed-tools: Read, Write, Edit, Bash, Glob, Grep
 3. **客製問題**（4-6 題：使用情境 / trust mode / worktree / tier / 語言 / recipe 專屬題）
 4. **Codex 草稿生成**（對每個 producer role 輕訪談 + main 補充）
 5. **產出檔案**（`.claude/agents/`, `.claude/skills/`, `.framework/codex/`, `.claude/commands/`, `CLAUDE.md`, `.framework/pipeline.yaml`, `.framework/memory/`, `.framework/briefs/` 結構）
-6. **摘要 + 強制重啟提示**（**不**提供試跑 dummy brief 選項；agent / slash command 列表須 session 重啟才生效）
+6. **部署機械閘**：跑 `/framework-hooks-sync`（`lib/scripts/hooks_sync.py`——複製 gate scripts、渲染 hooks 設定合併進 `.claude/settings.json`、跑回歸；詳見該指令）
+7. **摘要 + 強制重啟提示**（**不**提供試跑 dummy brief 選項；agent / slash command 列表須 session 重啟才生效）
 
 ## 前置條件
 

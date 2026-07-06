@@ -3,6 +3,16 @@
 記錄 framework lib（`D:\Claude\.framework\lib`）的版本演變。版號採 SemVer，對應日後的 git tag。
 版號真實來源＝`lib/VERSION`；各 repo 複製時以該檔為準。
 
+## 0.7.1 — 2026-07-06
+
+機械閘部署鏈指令化（`/framework-hooks-sync`）。動因：0.7.0 部署流程只記在 `lib/hooks/README.md`（手動複製 + 手動合併 settings.json），init 未接；手動合併 JSON 正是「確定性慣例靠機械閘非 LLM 自律」要消滅的操作。補完 0.7.0 部署鏈、無新閘門主題，patch bump。
+
+- **`lib/scripts/hooks_sync.py`**：確定性部署 script——`lib/hooks|scripts/*.py` → `.framework/hooks|scripts/`（byte 相同不重寫）、渲染 `hooks-config.template.json`（`{PYTHON}` / `{PROJECT_ROOT}`）、合併 `.claude/settings.json`（command 含 `.framework/hooks/` 的條目＝framework-managed 整組替換、使用者自加 hook 原樣保留、`_framework_managed_hooks` 鏡像同步）；settings.json 非合法 JSON 拒寫 exit 1（不 fail-open）；尾跑 62-case gate 回歸
+- **`lib/commands/framework-hooks-sync.md`**：command 薄包裝（`--dry` / `--no-test`）；main 只轉述 script 輸出，不手動編輯 hooks 區塊
+- **`lib/scripts/hooks_sync_tests.py`**：hooks_sync 生命週期測試（fake root：fresh / idempotent / user hook 保留 / 壞 JSON 拒寫 / dry-run，15 檢查）；改 hooks_sync.py 後必跑
+- **`framework-init.md`** 新增步驟 6「部署機械閘」；`lib/hooks/README.md` 部署段改指向指令 + 補測試入口
+- 設計來源：SGC 部署實例（真實 root 實跑 SYNC OK、兩測試套件全綠）指令化後去專案化回流
+
 ## 0.7.0 — 2026-07-03
 
 機械閘落地（hooks + scope gate）+ 外部審計修正回流。動因：SGC 部署實例做一次性外部審計（76 findings：文件 vs 實作矛盾 / 宣稱自動檢查但無機制在跑），確認框架所有「機械閘門 / BLOCKING」宣稱過去零 hook 零 script 兜底、純靠 LLM 自律，與「確定性慣例靠機械閘非 LLM 自律」原則相反。補上真實機制 + 同批文件矛盾修正。新增 `lib/hooks/` 與 `lib/scripts/` 兩個內容類別，屬新機制主題，minor bump。

@@ -1,6 +1,6 @@
 # Framework Hooks（機械閘）
 
-Source of truth。部署 = 複製 `*.py` 到 `<專案>/.framework/hooks/`，再依 `hooks-config.template.json` 把 hooks 區塊寫進 `<專案>/.claude/settings.json`（同步一份到 `_framework_managed_hooks` 供漂移比對）。本版 Claude Code 實測 settings.json 寫入後 hooks 即時生效；若未生效，重啟 session 或 `/hooks` 重載。
+Source of truth。部署 = 跑 `/framework-hooks-sync`（確定性機械流程 `lib/scripts/hooks_sync.py`：複製 `*.py` → `.framework/hooks|scripts/`、渲染 `hooks-config.template.json`、合併 `.claude/settings.json` 並保留使用者自加 hooks、鏡像 `_framework_managed_hooks`、跑回歸）。本版 Claude Code 實測 settings.json 寫入後 hooks 即時生效；若未生效，重啟 session 或 `/hooks` 重載。
 
 ## 閘清單
 
@@ -23,3 +23,4 @@ Source of truth。部署 = 複製 `*.py` 到 `<專案>/.framework/hooks/`，再�
 - `fullwidth_gate`：backtick 剝除是**全檔任意兩點配對**（非僅註解內 inline code）——兩個各含單一 backtick 的字串/註解之間的違規會漏檢。
 - `path_gate` / `fullwidth_gate`：Bash `echo > file` 重導向寫檔繞得過（framework role 均用 Write/Edit，暫不追）。
 - 回歸測試：同目錄 `run_tests.py`（62 case，含三輪對抗式驗證的全部回饋案例；fixture 於執行時自建於 temp）。改任一 gate script 後必跑：`python run_tests.py`，期望 FAILURES: 0。
+- `hooks_sync.py` 生命週期測試：`lib/scripts/hooks_sync_tests.py`（fake root：fresh / idempotent / user hook 保留 / 壞 JSON 拒寫 / dry-run）。改 hooks_sync.py 後必跑，期望 TOTAL FAILURES: 0。
