@@ -78,7 +78,9 @@ recipe: data-analytics
 roster: [data-analyst, analysis-reviewer, writer]
 state: done                            # done | failed | cancelled
 sub_briefs: [a, b]
-clarification_rounds_used: 7
+clarification_rounds_used: 7           # 逐題 fallback 模式的題數（draft 模式填真分岔題數）
+draft_cycles: 1                        # draft+redline 紅筆輪數（2026-07-06 起；逐題模式填 null）
+fork_count: 3                          # 真分岔題數（計入 cap 20；假設表條目不計）
 explore_rounds: 1
 total_review_rounds: 5
 total_artifacts: 4

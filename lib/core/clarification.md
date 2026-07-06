@@ -8,9 +8,10 @@
 
 ## 1. 設計原則
 
-1. **單題制**：一次問一題，等使用者答後再問下一題
-2. **每題格式固定**：問題 + 推薦 + 理由 + trade-off + options
-3. **L0 cap 20 題**：root brief 訪談階段總題數上限
+0. **預設 Draft+Redline**（2026-07-06）：main 出理解草稿（假設表 + 真分岔題捆包），使用者紅筆一次收斂（§2.5）。動因：歷史訪談 8-22 輪、使用者多數答「採推薦」——多數題目是確認不是決策，串行問答把使用者注意力花在儀式上。逐題模式降為 fallback
+1. **單題制（僅逐題 fallback 模式）**：一次問一題，等使用者答後再問下一題；draft 模式的真分岔題隨草稿捆包一次交付
+2. **每題格式固定**：問題 + 推薦 + 理由 + trade-off + options（draft 模式的真分岔題沿用同格式）
+3. **L0 cap 20 題**：root brief 真分岔題總數上限（假設表條目不計）
 4. **單題上限 2 輪反詰**：使用者答得不清楚時，最多再追問 1 次
 5. **使用者可說「你判斷」**：採 main 推薦並註明
 6. **Sub-brief 不訪談使用者**：模糊就回 `ambiguity` verdict
@@ -25,6 +26,57 @@
 | Explore Step 4 plan-draft 後（若 planner 回 ambiguity） | main | 使用者 |
 | Plan reviewer fail 第 2 輪後（review-loop §2.2 觸發回 Explore） | main | 使用者 |
 | Sub-brief 內 ambiguity verdict | main 自行判斷 → 補資料 / 升級 L0 | 不直接訪談使用者 |
+
+---
+
+## 2.5 Draft+Redline 理解草稿（預設模式，2026-07-06）
+
+### 2.5.1 流程
+
+```
+1. intel-pack 完成後，main 把未知數分類：
+   - 可假設：main 有明確推薦 + 依據（intel / codex / memory / 合理推測）+ 猜錯影響局部
+     → 寫進假設表，不問
+   - 真分岔：影響架構 / 跨 repo / 不可逆、選項成本相近、偏好無法從現有資料推斷
+     → 列為題目（§3 格式），隨草稿捆包
+2. main 寫 clarifications.md 為「理解草稿」（§10 draft 格式）：
+   需求摘要 + scope 邊界（含非目標）+ 假設表 + 真分岔題——一次交付
+3. 使用者紅筆（擇一通道）：
+   a. 對話回覆：「A1 ok、A3 錯→改 X、Q1 選 b、其餘照准」
+   b. 直接改 clarifications.md（劃掉 / 改寫）→ main diff 出紅筆
+4. main 更新草稿記裁決；若紅筆引出新假設 / 新分岔 → 第 2 輪只交付 delta（不重貼全文）
+5. 收斂條件：⚠ 級假設全數明確 ack + 真分岔全拍板 → 進 Explore Step 4
+```
+
+### 2.5.2 假設表格式
+
+```markdown
+## 假設清單（紅筆區）
+
+| ID | 假設 | 依據 | 若錯影響 | 級 |
+|---|---|---|---|---|
+| A1 | 外部讀取沿用既有 service account | intel: deployment 已掛對應 secret | §3 部署章整段重寫 | ⚠ |
+| A2 | 錯誤碼沿用既有段位 | codex: error-code 慣例 | §5 局部改 | — |
+
+⚠ 級需明確 ack（回「A1 ok」或劃掉改寫）；「—」級未劃掉視為接受。
+```
+
+- 依據必 typed：`intel:` / `codex:` / `memory:` / `推測`（各附一句話）——使用者掃依據欄即知哪些該重點審
+- 分級規則（機械判）：依據＝推測 且 影響非局部 → 必 ⚠；影響跨 sub-brief / 不可逆 → 必 ⚠；其餘 —
+- **沉默契約（使用者 2026-07-06 親訂）**：⚠ 級沉默不算數、必須明確 ack；「—」級未劃掉視為接受。此契約經使用者明訂，不違反 §11.3 精神（該條防的是模型把模糊當同意）
+- 草稿正文段落尾標 `(A1)` 錨定回假設表
+- **假設 > 15 條＝intel-pack 太薄**：回 Explore Step 2 補情報，不把不確定性倒給使用者
+
+### 2.5.3 Cap 與 fallback
+
+- 真分岔題計入 cap 20（§5）；假設表條目不計
+- 紅筆 3 輪未收斂 → 降回 §3 逐題模式，只問剩餘 blocking 分岔
+- intel 太薄連草稿都寫不出（罕見）→ 直接逐題模式，clarifications.md 註明原因
+- 再入口（§7 sub-brief 升級、§8 plan fail 補訪談）同走 delta 草稿：新假設 / 新分岔 append 至 clarifications.md 交紅筆，不重入串行
+
+### 2.5.4 遙測
+
+sessions frontmatter 記 `draft_cycles`（紅筆輪數）+ `fork_count`（真分岔題數）；與歷史 `clarification_rounds_used`（中位數 8-22）及 planning-reviewer R1 fail 率（retro baseline 45%）對照。試跑 2-3 brief 後判讀去留——manual validation gate，不直接宣布勝利。
 
 ---
 
@@ -101,6 +153,7 @@ Q{n}: <問題>
 
 ### 5.1 計數規則
 
+- Draft 模式：真分岔題每題算 1 題；假設表條目不計（§2.5.3）
 - 每題（含反詰）算 1 題（反詰不另計）
 - L0 Explore Step 3 + Step 4 後再次訪談都算
 - 若 Plan reviewer fail 第 2 輪後回 Explore 補訪談 → 累積（不重置）
@@ -201,6 +254,36 @@ Main 從以下來源生成題目：
 
 ## 10. clarifications.md 寫作格式
 
+### 10.1 Draft 模式（預設）——「理解草稿」
+
+```markdown
+# Clarifications: {brief_id}
+
+## 需求摘要
+<main 的理解，2-4 段；關鍵段落尾標 (A{n}) 錨定假設>
+
+## Scope 邊界
+- 做：<...>
+- 非目標：<...>
+
+## 假設清單（紅筆區）
+<§2.5.2 表格>
+
+## 真分岔（需拍板）
+<§3 題目格式，Q1..Qn 捆包>
+
+## 裁決記錄（紅筆後 main 補）
+- A1：ack（第 1 輪）
+- A3：使用者改寫 → <新內容>
+- Q1：選 (b)
+- 第 2 輪 delta：A16 新增（來自 Q1 裁決）→ ack
+
+## 訪談總計
+- 真分岔題：N / 20；紅筆輪數：M；降級逐題：無 | 有（原因）
+```
+
+### 10.2 逐題 fallback 模式
+
 ```markdown
 # Clarifications: {brief_id}
 
@@ -225,8 +308,8 @@ Main 從以下來源生成題目：
 
 ## 11. 鐵律
 
-### 11.1 不一次問多題
-即使連續 5 個關聯問題，main 也要單題提問、單題收答。例外：明確相關的選項組（如 a/b/c options）算同一題。
+### 11.1 逐題模式不一次問多題；draft 模式分岔捆包
+逐題 fallback 模式維持單題提問、單題收答（例外：明確相關的選項組算同一題）。Draft+Redline 模式（預設）的真分岔題隨草稿捆包一次交付——共同錨點是草稿本體，不算違反本條；分岔題間有依賴（Q2 答案使 Q3 失效）時標注順序或條件。
 
 ### 11.2 不省略推薦
 即使 main 也不確定 → 推薦欄位填「我也不確定，傾向 X 因為...」。永不留白。
@@ -247,6 +330,8 @@ Sub-brief 的 producer / reviewer 永遠不直接問使用者。Sub-brief ambigu
 
 ## 12. 給接手 agent 的提醒
 
+- **預設 draft+redline（§2.5）**：先出理解草稿，不要直接進逐題模式；假設 > 15 條先回去補 intel，不是使用者的作業
+- **⚠ 級假設沉默不算數**：收斂前逐條核對 ack 狀態；橡皮圖章效應是本模式最大固有風險，分級與依據 typed 是緩解不是豁免
 - **訪談是 main 親自做**，不要 spawn 「interviewer role」
 - **題目順序 = 影響順序**：blocking 題不答 plan 寫不出來，先問
 - **Cap 20 是硬上限**：超過違反 framework 鐵律，使用者會被打斷工作節奏

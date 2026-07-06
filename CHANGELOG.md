@@ -3,6 +3,17 @@
 記錄 framework lib（`D:\Claude\.framework\lib`）的版本演變。版號採 SemVer，對應日後的 git tag。
 版號真實來源＝`lib/VERSION`；各 repo 複製時以該檔為準。
 
+## 0.10.0 — 2026-07-06
+
+訪談改制：Draft+Redline 理解草稿（預設）。動因：訪談歷史 8-22 輪且使用者多數答「採推薦」——多數題目是確認非決策，單題制把使用者注意力花在儀式上；gate 遙測 baseline 另示 planning-reviewer fail 率 45%（plan 初稿品質是最大返工源，訪談品質是其直接上游）。新模式主題，minor bump。
+
+- **clarification.md §2.5**：main 出理解草稿（需求摘要 + scope 邊界 + 假設表 + 真分岔題捆包）→ 使用者紅筆一次收斂（對話回覆或直接改檔由 main diff）。未知數分類：可假設（推薦 + typed 依據 + 影響局部）進表不問；真分岔（架構 / 跨 repo / 不可逆 / 偏好推不出）用既有 §3 題目格式隨附
+- **假設表**：ID / 假設 / 依據（`intel:`/`codex:`/`memory:`/`推測` typed）/ 若錯影響 / 級。**兩級沉默契約（使用者親訂）**：⚠ 級（推測+非局部、跨 sub-brief、不可逆）沉默不算數、必明確 ack；「—」級未劃掉視為接受——復用 design_sketch ack_required 同構，不違 §11.3 精神（該條防模型把模糊當同意）
+- **防橡皮圖章**：假設 > 15 條＝intel 太薄回補情報（不把不確定性倒給使用者）；紅筆 3 輪未收斂降回逐題；真分岔計 cap 20、假設不計；再入口（sub-brief 升級 / plan fail 補訪談）走 delta 草稿不重入串行
+- **接線**：control-plane Step 3 改寫 + 訪談者職責；brief-new；planner 鐵律「假設表已裁決項不得重問、新不確定點以假設格式回供 delta 紅筆」；learning-loop sessions frontmatter 加 `draft_cycles` / `fork_count`
+- **試跑判讀（manual validation gate）**：2-3 brief 對照 `clarification_rounds_used` 歷史中位數 8-22 與 planning-reviewer R1 fail 率 45% 雙指標，數據決定去留；逐題 grill-me 降為 fallback 保留（§10 分 10.1/10.2 兩格式）
+- 設計來源：SGC 部署實例；外部模型審視「八點建議」#3，三決策點（模式定位 / 沉默契約 / 載體）經使用者逐一拍板
+
 ## 0.9.0 — 2026-07-06
 
 工作成果快照（patch dump）。動因：engineer 不 commit（使用者親管 git），sub-brief 完成後成果只存在 uncommitted working tree——唯一副本，errant checkout / 平行 sub-brief 誤動 / 測試臨時 patch revert 意外即滅失；user review 對象也隨 tree 漂移。新耐久化機制主題，minor bump。

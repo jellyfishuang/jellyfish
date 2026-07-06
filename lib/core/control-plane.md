@@ -11,7 +11,7 @@
 ### 1.1 是
 - **編排者**：決定何時 spawn 誰、按什麼順序、傳什麼參數
 - **狀態管理者**：寫 `_tree.yaml`、`_active.yaml`、`_manifest.md`
-- **訪談者**：grill-me 風格主持與使用者的釐清對話（Explore Step 3）
+- **訪談者**：主持與使用者的釐清（Explore Step 3；預設 draft+redline 理解草稿，逐題 grill-me 為 fallback）
 - **Roster 決策者**：選擇本 brief 用哪些 role
 - **情報蒐集者**：讀 codex / memory / repo，產出 intel-pack.md
 - **批准 gate**：呈現 plan 給使用者批准
@@ -215,19 +215,19 @@ Step I. 解鎖
 9. 快取 mtime，下次 Explore 比對是否需重 build
 ```
 
-### Step 3. 訪談（grill-me）
+### Step 3. 理解草稿 + 紅筆（draft+redline，預設；2026-07-06）
 
 ```
-1. 從 intel-pack.md 不確定點清單生成題目（依 core/clarification.md）
-2. 單題提問：
-   "Q1: 此 brief 的 cohort 切法應該按註冊月份還是首次儲值月份？
-    我推薦：首次儲值月份（更貼合 revenue 分析）
-    理由：...
-    Trade-off：註冊月份對 onboarding 漏斗友善，但 revenue 分析會誤差
-    Options: (a) 註冊月份 (b) 首次儲值月份 (c) 你判斷"
-3. 收使用者答 → 若使用者說「你判斷」→ 採推薦並註明
-4. 重複直到沒不確定點 OR 達 cap 20 題
-5. 寫 .framework/briefs/{brief_id}/clarifications.md（一問一答 + 我的解讀）
+1. 從 intel-pack.md 把未知數分類（依 core/clarification.md §2.5）：
+   可假設（有推薦 + typed 依據 + 影響局部）→ 假設表；
+   真分岔（影響架構/跨 repo/不可逆、偏好推不出）→ 題目（§3 格式）
+2. main 寫 clarifications.md 為理解草稿（clarification.md §10.1 格式）：
+   需求摘要 + scope 邊界 + 假設表（ID/假設/依據/若錯影響/級）+ 真分岔題捆包
+   —— 一次交付使用者紅筆（對話回覆 或 直接改檔由 main diff）
+3. ⚠ 級假設必須明確 ack（沉默不算數）；「—」級未劃掉視為接受；真分岔全拍板
+4. 更新草稿記裁決；新假設/新分岔走 delta 紅筆（不重貼全文）
+5. 收斂 → Step 4。紅筆 3 輪未收斂 → 降回逐題模式（cap 20 題）；
+   假設 > 15 條 = intel 太薄 → 回 Step 2 補情報
 ```
 
 ### Step 4. Plan 草稿

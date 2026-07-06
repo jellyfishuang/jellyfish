@@ -89,7 +89,7 @@ worktree: forbidden
 - **不直接改 source code**：plan 只寫「該做什麼」，不寫實作 patch
 - **驗收條件必可機械驗證**：禁寫「程式碼品質好」這種主觀條件，要寫「pytest 全 pass」「lint 0 error」「endpoint X 回應 schema Y」
 - **allowed_paths 必含具體 glob**：避免 engineer 改範圍外的檔
-- **不假設未確認的事**：clarifications.md 沒提到的關鍵假設 → 回 ambiguity
+- **不假設未確認的事**：clarifications.md（理解草稿）沒提到的關鍵假設 → 回 ambiguity。**草稿假設表已裁決項＝已確認，不得重問**——回 ambiguity 前先查假設表與真分岔裁決記錄；新不確定點以假設表格式（假設 / 依據 / 若錯影響 / 建議級別）附於 verdict questions，供 main append 進草稿走 delta 紅筆（clarification.md §2.5）
 - **Sub-brief 切分要有 rationale**：不為切而切（≥2 個獨立子任務、互不阻塞才切）
 - **不繞過 reviewer**：planning-reviewer fail 後重寫，不是直接覆蓋
 - **不直寫外部 KB**：plan.md 留 brief 目錄，KB 升流由 learning loop 處理

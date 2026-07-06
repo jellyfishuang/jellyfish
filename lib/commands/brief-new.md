@@ -64,7 +64,7 @@ allowed-tools: Read, Write, Edit, Glob, Grep, Task
 
 依 `.framework/lib/core/control-plane.md` 第 4 節 Explore 流程：
 - Step 2 情報蒐集（main 自動）
-- Step 3 訪談（grill-me，cap 20 題）
+- Step 3 理解草稿 + 紅筆（draft+redline 預設；真分岔題 cap 20，逐題 grill-me 為 fallback）
 - Step 4 plan 草稿
 - Step 5 plan 審核
 - Step 6 等使用者 `/brief-approve`
@@ -111,6 +111,6 @@ allowed-tools: Read, Write, Edit, Glob, Grep, Task
 ## 相關文件
 
 - `.framework/lib/core/control-plane.md`：Explore 階段細節
-- `.framework/lib/core/clarification.md`：grill-me 規則（cap 20 題）
+- `.framework/lib/core/clarification.md`：釐清規則（§2.5 draft+redline 預設 + 逐題 fallback，cap 20 題）
 - `.framework/lib/core/e2r-tree.md`：_tree.yaml schema
 - `.framework/lib/core/batch-lock.md`：_active.yaml 語意
