@@ -433,6 +433,59 @@ Amendment 是 L0 holistic review pass 後、Step G 學習迴圈前的可選輕�
 
 ---
 
+## 5.6 User-away Mandate（離場授權，2026-07-06 結構化）
+
+使用者離場前授權 main 自主續跑時，**必寫結構化 mandate，禁用散文**（散文接手要靠讀 prose 理解邊界，部署實例的教訓）。
+
+### 5.6.1 載體與流程
+
+```
+1. 使用者口頭授權 → main 轉譯為 .framework/briefs/{id}/_mandate.json（schema 見下）
+2. 寫完必跑驗證: python .framework/scripts/mandate_check.py .framework/briefs/{id}
+   exit 2 → 修正後重跑; 驗證通過 → 把 MANDATE OK 摘要唸給使用者確認後才開始自主執行
+3. _active.yaml.autonomous_mandate 欄位只放指針值 "_mandate.json"（不放內容）
+4. 執行中: 只推進 auto_advance 白名單; 到人審關卡停（除非該關卡在 pre_authorized）;
+   觸發 HOLD 條件 → 停該線、寫進 on_stop.report、不替使用者猜
+5. 使用者回來（親自接手或 /framework-recover）→ main 顯示 mandate 摘要 + 已推進狀態
+   → 使用者確認後標 status=consumed; 之後的動作回到正常互動模式
+```
+
+### 5.6.2 `_mandate.json` Schema
+
+```json
+{
+  "brief_id": "<brief_id>",
+  "granted_at": "<ISO ts>",
+  "status": "active",
+  "auto_advance": {
+    "sub_briefs": ["b", "d"],
+    "stages": ["engineering", "code-review", "architecture-review", "unit_test"],
+    "max_review_rounds": 4
+  },
+  "pre_authorized": [
+    {"target": "a.user_code_review", "as": "pass",
+     "condition": "使用者回來仍憑報告 review；有問題走 amendment"}
+  ],
+  "do_not_start": [{"sub_brief": "c", "reason": "depends_on b 完整 done 含使用者 b review"}],
+  "on_stop": {"report": "user_review_report.md", "covers": ["a", "b", "d"]},
+  "notes": "自由文字補充（不承載機械語意）"
+}
+```
+
+- `status`: active | consumed | revoked
+- `auto_advance`: 白名單語意——不在列的 sub-brief / stage 一律不動
+- `pre_authorized`: 人審關卡的逐項預授權；`as` 只能 `pass`；`condition` 必填（使用者回來後的補救路徑）
+- `do_not_start`: 明示不開 + 原因（防接手 session 誤判為遺漏）
+
+### 5.6.3 不可豁免安全欄（mandate 寫什麼都無效）
+
+- HOLD 條件永遠生效：blocker / 真 ambiguity / 設計取捨 → 停線、寫報告、不猜
+- 永不可預授權：git commit/push、`.framework/memory|codex/`、`.claude/skills/` 寫入、brief 歸檔、品質評分、brief cancel、pipeline/role 修改
+- `max_review_rounds` 只可低於 review-loop cap（4），不可高於
+- 人審 stage（user_code_review / plan_approval）不可進 `auto_advance.stages`——只能走 `pre_authorized` 逐項列舉（mandate_check 機械擋）
+
+---
+
 ## 6. Spawn Subagent 的具體做法
 
 ### 6.1 Spawn 前準備

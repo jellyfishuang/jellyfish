@@ -26,3 +26,4 @@ Source of truth。部署 = 跑 `/framework-hooks-sync`（確定性機械流程 `
 - `hooks_sync.py` 生命週期測試：`lib/scripts/hooks_sync_tests.py`（fake root：fresh / idempotent / user hook 保留 / 壞 JSON 拒寫 / dry-run）。改 hooks_sync.py 後必跑，期望 TOTAL FAILURES: 0。
 - gate 遙測測試：`lib/scripts/telemetry_tests.py`（fake brief fixture：抽取 / 冪等 / 缺檔 exit 2 / --force / --check-only / 報表 / 缺 patch WARN）。改 telemetry_extract.py / telemetry_report.py 後必跑，期望 TOTAL FAILURES: 0。
 - patch dump 測試：`lib/scripts/patch_dump_tests.py`（fixture git repo：tracked 改/刪 + untracked 巢狀 + binary + ignored 排除 / 真實 index 零改變 / apply 還原一致 / 空變更）。改 patch_dump.py 後必跑，期望 TOTAL FAILURES: 0。
+- mandate 驗證測試：`lib/scripts/mandate_check_tests.py`（fixture brief：合法 / status / 人審關卡入 stages 擋 / 節點存在 / as 限 pass / condition 必填 / rounds cap / 交集 / 壞 JSON）。改 mandate_check.py 後必跑，期望 TOTAL FAILURES: 0。

@@ -230,6 +230,7 @@ nodes:
 | Grill-me 訪談 | `.framework/lib/core/clarification.md` |
 | 學習迴圈 | `.framework/lib/core/learning-loop.md` |
 | Batch lock / _active.yaml | `.framework/lib/core/batch-lock.md` |
+| 離場授權（user-away mandate） | `.framework/lib/core/control-plane.md` §5.6（schema + 安全欄；驗證器 `mandate_check.py`） |
 | 升級規則 | `.framework/lib/core/escalation-rules.md` |
 
 ## 鐵律（Main session）

@@ -24,6 +24,13 @@ allowed-tools: Read, Write, Edit, Bash, Glob, Grep, Task
    - 存在但 pid == 當前 main pid → 顯示「當前 main session 即為主，無需 recover」
    - 存在且 pid != 當前 → 進入 recover 流程
 2. Read 對應 _tree.yaml + _manifest.md + _suggestions.json
+2.5 若 _active.yaml 有 autonomous_mandate 或 briefs/{id}/_mandate.json 存在：
+    a. 跑 `python .framework/scripts/mandate_check.py .framework/briefs/{id}`（驗結構）
+    b. status=active → 顯示 mandate 摘要（auto_advance / pre_authorized / do_not_start / 已推進到哪）
+       → 問使用者「繼續此授權自主續跑 / 收回改互動模式（標 consumed）」
+    c. status=consumed|revoked → 僅列為歷史 trail，不影響 recover 決策
+    d. 驗證 exit 2（結構壞）→ 顯示違規明細，視同無 mandate（互動模式），提醒使用者重簽
+    e. 舊制散文 mandate（_active.yaml 內 prose block）→ 唸給使用者、建議轉簽 _mandate.json；不自動轉譯
 3. 分析 in-flight 節點（state ∈ {executing, reviewing, paused, failed}）
 4. 對每節點顯示給使用者並收答
 5. 依答更新 _tree.yaml

@@ -3,6 +3,16 @@
 記錄 framework lib（`D:\Claude\.framework\lib`）的版本演變。版號採 SemVer，對應日後的 git tag。
 版號真實來源＝`lib/VERSION`；各 repo 複製時以該檔為準。
 
+## 0.11.0 — 2026-07-06
+
+User-away mandate 結構化（離場授權）。動因：使用者離場授權原以散文寫在 `_active.yaml.autonomous_mandate`（2026-07-02 部署實例），接手 session 靠讀 prose 理解邊界、無機械可解析性、無安全欄。新機制主題，minor bump。
+
+- **`_mandate.json`**（briefs/{id}/ 下，仿 `_suggestions.json` 前例）：結構化 schema——`auto_advance`（sub-brief / stage 白名單 + max_review_rounds）、`pre_authorized`（人審關卡逐項預授權，`as` 限 `pass`、`condition` 必填補救路徑）、`do_not_start`（明示不開 + 原因，防接手誤判遺漏）、`on_stop`（停下時的報告產出）；`_active.yaml.autonomous_mandate` 降為指針值，禁散文
+- **不可豁免安全欄**（control-plane §5.6.3，mandate 寫什麼都無效）：HOLD 條件（blocker / 真 ambiguity / 設計取捨）永遠生效；git commit/push、memory|codex|skills 寫入、歸檔、品質評分、cancel 永不可預授權；人審 stage 不可進 auto_advance（只能逐項 pre_authorized）
+- **`lib/scripts/mandate_check.py`**：寫入 / recover 時機械驗證（欄位枚舉 / 節點存在 / as+condition / rounds cap 只可降 / auto 與 do_not_start 交集 / 人審關卡入 stages 直接擋）；9 測試全綠
+- **接線**：control-plane 新 §5.6（載體流程 / schema / 安全欄）；batch-lock §2 schema + 寫入時機；framework-recover step 2.5（驗 mandate → active 問「續跑 / 收回」、壞結構降互動模式、舊制散文唸給使用者建議轉簽）；claude-md-template 深層規則表
+- 設計來源：SGC 部署實例 2026-07-02 散文 mandate 教訓；外部模型審視「八點建議」#6
+
 ## 0.10.1 — 2026-07-06
 
 遙測判讀觸發機械化。動因：報表判讀原靠「memory 載入提醒 + 人記得」——提示紀律非機械閘。補完：`telemetry_extract.py` 每次歸檔跑完抽取後自動印「遙測觸發狀態: live briefs N/{門檻} | draft 樣本 M/{門檻}」，達門檻印 `>>> 已達判讀門檻 … 依 memory/experiments/ runbook 執行`。門檻為 script 頂部常數（LIVE_READ_TRIGGER=10 / DRAFT_TRIAL_TRIGGER=3）。telemetry_tests 增至 17（+觸發狀態行×2）。無新機制主題，patch bump。

@@ -32,6 +32,7 @@ recipe: data-analytics
 roster: [data-analyst, analysis-reviewer, writer]
 worktree_enabled: false
 trust_mode: standard
+autonomous_mandate: _mandate.json   # 選填；離場授權指針（內容在 briefs/{id}/_mandate.json，見 control-plane §5.6）
 ```
 
 ### 2.1 欄位說明
@@ -49,12 +50,14 @@ trust_mode: standard
 | `roster` | ✓ | 啟用的 role 清單 |
 | `worktree_enabled` | ✓ | 此 brief 是否用 worktree |
 | `trust_mode` | ✓ | 此 brief 啟動時的 trust mode（中途切 mode 不影響當前 brief）|
+| `autonomous_mandate` | 選填 | **僅指針值 `_mandate.json`**，內容一律在 `briefs/{id}/_mandate.json`（結構化 schema + 驗證器見 control-plane §5.6；**禁止散文 mandate 寫在本檔**——2026-07-06 結構化改制） |
 
 ### 2.2 寫入時機
 
 - 建立 brief（`/brief-new` 完成 brief.md 後）→ **先跑重疊機械閘** `python .framework/scripts/scope_check.py --overlap <預估 affected_repos 逗號串>`：非空交集（與 active brief 範圍或殘留 dirty 工作樹重疊；無 active brief 時只驗 dirty 殘留）→ 顯示給使用者確認後才建 _active.yaml（防平行/殘留互蓋）→ 建立 _active.yaml
 - 階段轉換（exploring → awaiting_approval / executing / reviewing / learning）→ 更新 `phase`
 - 任何 main 動作（spawn role / 寫 verdict / 訪談題數變化）→ 更新 `last_heartbeat` + 對應欄位
+- 使用者離場授權 → 寫 `briefs/{id}/_mandate.json` + 跑 `python .framework/scripts/mandate_check.py .framework/briefs/{id}` 通過 → 本檔加 `autonomous_mandate: _mandate.json`；使用者回來確認後 mandate 標 consumed（指針保留供 trail）
 - Brief 完成 / 取消 → 刪除 _active.yaml
 
 ---
