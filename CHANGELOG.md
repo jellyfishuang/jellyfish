@@ -3,6 +3,17 @@
 記錄 framework lib（`D:\Claude\.framework\lib`）的版本演變。版號採 SemVer，對應日後的 git tag。
 版號真實來源＝`lib/VERSION`；各 repo 複製時以該檔為準。
 
+## 0.8.0 — 2026-07-06
+
+Gate 遙測（流程有效性量測）。動因：框架品質閘豐富（一個 code sub-brief 從 plan 到收尾 6–8 道）但零流程數據——哪道閘攔到多少唯一真缺陷、哪道只在燒輪次，無從得知；砍閘靠感覺、加閘沒煞車。同批修正 verdict 落檔矛盾：§2 表寫「subagent 寫 verdict」但 reviewer 無 Write 工具、§6.3 又要 main 落檔——兩規則打架的結果是誰都沒寫（SGC 20 個歸檔 brief 僅 2 個留 verdict 檔）。新遙測機制主題，minor bump。
+
+- **verdict 落檔規則收斂**（control-plane §2 表 + §6.3）：main 收驗後**原樣落檔**（記錄非創作，不違反「main 不寫 artifact」）；brief 層路徑 `{root}/reviews/{role}.verdict.json`、多輪 `.round{N}`
+- **user_review.json**（claude-md-template step 3）：user_code_review 收 stage 時 main 必寫 result + findings（disposition: fixed_inline|amendment|debt|rejected），**零 findings 也寫**（遙測分母）——最貴一道閘的唯一結構化資料源
+- **`lib/scripts/telemetry_extract.py`**：歸檔前跑；抽 reviews/*.verdict.json + user_review.json → append `memory/telemetry/gate_runs.jsonl`（同 brief 重跑冪等）；完整性檢查（code sub-brief 缺 code-reviewer verdict / user_review、root 有 plan.md 缺 planning verdict → exit 2 擋歸檔；--force 降警告記 trail）
+- **`lib/scripts/telemetry_report.py`**：per-gate 統計（runs / fail 率 / findings 密度 / zero-finding 率 / severity / disposition / live-retro 來源分列）；判讀提示：密度低 + zero 率高 + severity 輕 → 候選改條件式閘
+- **`lib/scripts/telemetry_tests.py`**：13 檢查（抽取 / 冪等 / 缺檔 exit 2 / --force / --check-only / 報表）；歸檔 step 7 改兩段（先遙測後搬移）
+- 設計來源：SGC 部署實例；使用者採納外部模型審視「八點建議」#2——gate 遙測先行，數據指導後續流程減法（#1 stage 審計 / #5 鐵律 gate 化的前提）
+
 ## 0.7.1 — 2026-07-06
 
 機械閘部署鏈指令化（`/framework-hooks-sync`）。動因：0.7.0 部署流程只記在 `lib/hooks/README.md`（手動複製 + 手動合併 settings.json），init 未接；手動合併 JSON 正是「確定性慣例靠機械閘非 LLM 自律」要消滅的操作。補完 0.7.0 部署鏈、無新閘門主題，patch bump。

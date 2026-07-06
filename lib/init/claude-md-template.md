@@ -122,6 +122,9 @@
 [ ] 3.（per-sub-brief 制）user_code_review 與 unit_test 移至 per-sub-brief——sub-brief 完成當下就地跑
        engineering → code-reviewer → architecture-reviewer → unit_test（plan 可 skip）→ user_code_review（actor=user），
        全過該 sub-brief 才算 done；brief 層不再重跑 user_code_review
+       ⚠️ user_code_review 收 stage 時 main 必寫 sub-briefs/{sub}/reviews/user_review.json：
+       {"gate":"user_code_review","spec_id":"...","result":"pass|fail","findings":[{"desc","severity":null|"MAJOR"|"MINOR","disposition":"fixed_inline|amendment|debt|rejected"}]}
+       findings 空陣列也要寫（zero-finding 是遙測分母）——這是 gate 遙測中最貴一道閘的唯一結構化資料源
 [ ] 4. 寫 .framework/memory/sessions/{brief_id}.md 摘要（強制，無批准門檻、無條件）
        Schema 見 .framework/lib/core/learning-loop.md § 4。含 local_test 與各 sub-brief user_code_review 結果。
        若 step 4 在 step 2 之前寫過（main 提前寫），需在此補完。
@@ -130,7 +133,11 @@
 [ ] 6. Read .framework/briefs/{id}/_suggestions.json（若有），逐條顯示 suggest_* 給使用者：
        「提議寫入 .framework/memory/lessons/{cat}.md：'<text>' (y/n/edit)?」
        對 y / edit 的條目，main 直接寫 memory（**不需另開 brief**；不需 spawn planner 評估）
-[ ] 7. 移動 .framework/briefs/{id}/ → .framework/briefs/_archive/{year-month}/{id}/  （注意 year-month 子層）
+[ ] 7. 歸檔（兩段，順序固定）：
+       a. gate 遙測抽取 + verdict 落檔完整性檢查：`python .framework/scripts/telemetry_extract.py .framework/briefs/{id}`
+          - 抽取全部 reviews/*.verdict.json + user_review.json → append .framework/memory/telemetry/gate_runs.jsonl（同 brief 重跑冪等：舊列先清）
+          - exit 2 = 有 code sub-brief 缺 verdict / user_review 落檔 → 顯示缺檔清單、補檔後重跑；使用者明示 skip 才可跳過（--force 記 trail）
+       b. 移動 .framework/briefs/{id}/ → .framework/briefs/_archive/{year-month}/{id}/  （注意 year-month 子層）
 [ ] 8. 刪 .framework/briefs/_active.yaml
 [ ] 9. 顯示完成摘要給使用者
 ```

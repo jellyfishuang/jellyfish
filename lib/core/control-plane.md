@@ -86,7 +86,7 @@
 | Init: 寫 `.framework/memory/{MEMORY,architecture,preferences}.md` | `Write`（純新內容） |
 | Brief: 建 `.framework/briefs/{id}/brief.md`（從使用者描述） | `Write`（純新內容） |
 | Brief: 建 sub-brief plan.md（從 L0 plan 推導） | `Write`（推導內容） |
-| Brief: 寫 verdict.json | `Write` 由 subagent 做（main 收後不重寫） |
+| Brief: 寫 verdict.json | `Write` 由 **main** 做（subagent 在最後訊息 emit JSON，reviewer 無 Write 工具；main 收驗後**原樣落檔**至 §6.3 step 4 路徑，不改內容——此為記錄非創作，不違反「main 不寫 artifact」）。落檔為遙測資料源，歸檔前有機械完整性檢查（`telemetry_extract.py --check`） |
 | 學習迴圈：寫 `.framework/memory/lessons/{cat}.md`（append 一條） | `Edit`（append 至檔尾） |
 | 學習迴圈：寫 `.framework/memory/sessions/{id}.md`（新檔） | `Write`（純新內容） |
 | `/framework-role-add`：基於 framework template | `cp .framework/lib/roles/{template}.md` + `Edit` 客製 |
@@ -489,6 +489,8 @@ Task(
 2. 驗證 schema（見 core/typed-interfaces.md Section 3）
 3. 若 schema 違規 → retry 1 次（給 role 修正機會）→ 仍違規 → 視為 tool_error
 4. 寫 verdict 到 .framework/briefs/{root}/sub-briefs/{sub}/stages/{stage}/reviews/{role}.verdict.json
+   （brief 層 stage——planning-reviewer / architecture-reviewer plan_design / L0——寫 .framework/briefs/{root}/reviews/{role}.verdict.json；
+    多輪同 role 檔名加 .round{N}；此落檔為 gate 遙測資料源，缺檔會被歸檔前機械檢查擋下）
 5. 收 suggest_* 欄位累積進 .framework/briefs/{root}/_suggestions.json
 6. 更新 _manifest.md（人類可讀進度）
 7. process_verdict（見 5.3）
