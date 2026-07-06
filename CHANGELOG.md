@@ -3,6 +3,17 @@
 記錄 framework lib（`D:\Claude\.framework\lib`）的版本演變。版號採 SemVer，對應日後的 git tag。
 版號真實來源＝`lib/VERSION`；各 repo 複製時以該檔為準。
 
+## 0.12.0 — 2026-07-06
+
+鐵律 gate 化第二批（verdict / tree schema 驗證器 + 收尾腳本化）+ stage 存在理由標注慣例。動因：typed-interfaces 與 e2r-tree 的「main 拒收 / 禁止自由發揮」過去靠 LLM 目測——部署實例僅有的 2 個留檔 verdict brief 就驗出 8 條 schema 違規（缺 actor.spec_id/type/round、pass 帶 fail check），目測從未真正把關。三個新驗證器主題，minor bump。
+
+- **`lib/scripts/verdict_check.py`**：typed-interfaces §2-3 全量機械驗證（7 verdict 枚舉 / actor 必填 + producer×reviewer 組合表 / 各 verdict 條件必填）；單檔（main §6.3 收 verdict 落檔後跑，取代目測）+ brief_dir 全量兩模式；8 測試
+- **`lib/scripts/tree_check.py`**：`_tree.yaml` canonical schema lint（node / stage / brief_stages 三層 state enum、禁頂層攤平、頂層鍵、stage verdict 枚舉；stage enum 補實務在用的 `skipped`——文件枚舉原漏列）；7 測試
+- **`lib/scripts/brief_close.py`**：收尾機械段腳本化——串 tree_check → verdict_check → telemetry_extract（含觸發門檻提示）→ mandate 未收回擋 → mv `_archive/{ym}/` → 驗 brief_id 相符才刪 `_active.yaml`（不誤殺他 brief 的鎖）；--dry-run / --force；6 測試。收尾清單 step 7-9 收斂為一支指令
+- **接線**：control-plane §6.3 改「先落檔→機械驗→retry→tool_error」；claude-md-template step 7/8；e2r-tree §1.4 + typed-interfaces §3 補驗證器指針
+- **Stage 存在理由標注慣例**（八點 #1 鋪墊）：pipeline.yaml 每 stage 註「補償什麼模型弱點 + 遙測線索」，換模型世代逐條審計；pipeline-yaml-template 記慣例（generic），實例數據見部署端（SGC pipeline.yaml 0.12.0 為首例，含 retro baseline 線索）
+- 設計來源：SGC 部署實例；外部模型審視「八點建議」#5 立即可做子項 + #1 鋪墊
+
 ## 0.11.0 — 2026-07-06
 
 User-away mandate 結構化（離場授權）。動因：使用者離場授權原以散文寫在 `_active.yaml.autonomous_mandate`（2026-07-02 部署實例），接手 session 靠讀 prose 理解邊界、無機械可解析性、無安全欄。新機制主題，minor bump。

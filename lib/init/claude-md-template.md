@@ -137,13 +137,13 @@
 [ ] 6. Read .framework/briefs/{id}/_suggestions.json（若有），逐條顯示 suggest_* 給使用者：
        「提議寫入 .framework/memory/lessons/{cat}.md：'<text>' (y/n/edit)?」
        對 y / edit 的條目，main 直接寫 memory（**不需另開 brief**；不需 spawn planner 評估）
-[ ] 7. 歸檔（兩段，順序固定）：
-       a. gate 遙測抽取 + verdict 落檔完整性檢查：`python .framework/scripts/telemetry_extract.py .framework/briefs/{id}`
-          - 抽取全部 reviews/*.verdict.json + user_review.json → append .framework/memory/telemetry/gate_runs.jsonl（同 brief 重跑冪等：舊列先清）
-          - exit 2 = 有 code sub-brief 缺 verdict / user_review 落檔 → 顯示缺檔清單、補檔後重跑；使用者明示 skip 才可跳過（--force 記 trail）
-       b. 移動 .framework/briefs/{id}/ → .framework/briefs/_archive/{year-month}/{id}/  （注意 year-month 子層）
-[ ] 8. 刪 .framework/briefs/_active.yaml
-[ ] 9. 顯示完成摘要給使用者
+[ ] 7. 收尾機械段（2026-07-06 腳本化）：`python .framework/scripts/brief_close.py {brief_id}`
+       串 tree_check（_tree.yaml schema lint）→ verdict_check（落檔 verdict 全量 schema）→
+       telemetry_extract（遙測抽取 + 完整性檢查 + 觸發門檻提示）→ _mandate.json 未收回擋 →
+       mv .framework/briefs/{id}/ → _archive/{year-month}/{id}/ → 驗 brief_id 相符後刪 _active.yaml
+       exit 2 → 顯示未過清單、修正後重跑；使用者明示 skip 才可 --force（記 trail）
+       （前置仍是人/LLM 的：holistic_review 寫入 / local_test / sessions 摘要 / 品質評分 / _suggestions）
+[ ] 8. 顯示完成摘要給使用者
 ```
 
 **brief_stages 跑哪些**：依 `pipeline.yaml.pipelines.{recipe}.brief_stages`。

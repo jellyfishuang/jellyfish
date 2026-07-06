@@ -539,11 +539,13 @@ Task(
 
 ```
 1. 從 subagent 最後訊息抓 ```json``` 區塊
-2. 驗證 schema（見 core/typed-interfaces.md Section 3）
-3. 若 schema 違規 → retry 1 次（給 role 修正機會）→ 仍違規 → 視為 tool_error
-4. 寫 verdict 到 .framework/briefs/{root}/sub-briefs/{sub}/stages/{stage}/reviews/{role}.verdict.json
+2. 寫 verdict 到 .framework/briefs/{root}/sub-briefs/{sub}/stages/{stage}/reviews/{role}.verdict.json
    （brief 層 stage——planning-reviewer / architecture-reviewer plan_design / L0——寫 .framework/briefs/{root}/reviews/{role}.verdict.json；
     多輪同 role 檔名加 .round{N}；此落檔為 gate 遙測資料源，缺檔會被歸檔前機械檢查擋下）
+3. 機械驗 schema：python .framework/scripts/verdict_check.py <剛落檔的 verdict 路徑>
+   （2026-07-06 起取代 LLM 目測；規則＝typed-interfaces §2-3 全量：7 枚舉 / actor 組合表 / 條件必填。
+    部署實例實證：僅有的 2 個留檔 brief 驗出 8 條違規——目測從未真正把關）
+4. exit 2 → retry 同 role 1 次（給修正機會）→ 仍違規 → 視為 tool_error
 5. 收 suggest_* 欄位累積進 .framework/briefs/{root}/_suggestions.json
 6. 更新 _manifest.md（人類可讀進度）
 7. process_verdict（見 5.3）

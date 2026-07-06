@@ -42,6 +42,8 @@
 
 ## 3. JSON Schema（完整）
 
+> 機械驗證：`python .framework/scripts/verdict_check.py <verdict.json | brief_dir>`（本節全部規則；main 收 verdict 落檔後跑，取代目測——control-plane §6.3）。
+
 ### 3.1 結構
 
 ```json

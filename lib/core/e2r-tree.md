@@ -33,6 +33,8 @@
 
 ## 1.4 Schema 規範化警告
 
+> 機械驗證：`python .framework/scripts/tree_check.py <brief_dir>`（三層 state enum / 禁攤平 / 頂層鍵；brief_close 收尾鏈自動跑，違規 exit 2 擋歸檔）。
+
 本章 §2.2 的 `_tree.yaml` schema 與 §4.4 的 `_manifest.md` schema 是 **canonical**——main session 寫入時**必照此格式**。
 
 **禁止自由發揮**：
