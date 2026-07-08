@@ -493,7 +493,10 @@ Amendment 是 L0 holistic review pass 後、Step G 學習迴圈前的可選輕�
 ```
 1. 讀目標 role 的 .claude/agents/{role}.md
 2. 解析 frontmatter：
-   - tier → 解析 .framework/lib/models.yaml 取 model ID
+   - model → **不需 main 處理**：harness 直接讀 frontmatter `model:` 欄機械生效
+     （2026-07-07 v0.13.0 更正：舊制「main 解析 tier → models.yaml 取 model ID」從未生效，
+      subagent 一直繼承 main 模型。tier 欄降為語意標籤，models.yaml 為對照表；
+      驗證用 .framework/scripts/model_tier_check.py）
    - tools → 設 subagent 可用 tool
    - skills → Read 各 SKILL.md 全文
    - codex (auto) → Read .framework/codex/{role}.md if exists
@@ -534,6 +537,9 @@ Task(
   prompt=<上述組好的 prompt>
 )
 ```
+
+**禁止在 Task call 傳 model 參數**——spawn-time override 會蓋掉 frontmatter 的 tier 分層。
+model 唯一來源＝role 檔 frontmatter `model:` 欄。
 
 ### 6.3 等回後
 

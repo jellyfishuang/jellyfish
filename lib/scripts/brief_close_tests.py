@@ -31,6 +31,35 @@ def w(rel, content):
     open(p, "w", encoding="utf-8").write(content)
 
 
+SESSION_MD = f"""---
+id: {BID}
+created_at: 2026-01-01T12:00:00
+brief_started_at: 2026-01-01T10:00:00
+brief_completed_at: 2026-01-01T12:00:00
+duration: 2h
+recipe: dev-team
+roster: [planner, engineer]
+state: done
+sub_briefs: [a]
+archived_to: ./_archive/2026-01/{BID}/
+---
+
+# Session: {BID}
+
+## 摘要
+
+fake。
+
+## 關鍵時間軸
+
+- 10:00 開始
+
+## 產出
+
+- plan.md
+"""
+
+
 def build_fixture():
     shutil.rmtree(os.path.join(root, ".framework"), ignore_errors=True)
     os.makedirs(bdir)
@@ -41,6 +70,9 @@ def build_fixture():
         {"verdict": "pass", "actor": {"role": "planning-reviewer", "type": "reviewer", "spec_id": BID,
                                       "round": 1, "stage": "planning"}, "summary": "ok", "artifact": None,
          "checks": [{"name": "sections", "result": "pass", "evidence": "ok"}]}))
+    spath = os.path.join(root, ".framework", "memory", "sessions", BID + ".md")
+    os.makedirs(os.path.dirname(spath), exist_ok=True)
+    open(spath, "w", encoding="utf-8").write(SESSION_MD)
     open(os.path.join(briefs, "_active.yaml"), "w", encoding="utf-8").write(
         f"brief_id: {BID}\nphase: learning\n")
 
@@ -93,6 +125,13 @@ build_fixture()
 w("_tree.yaml", "root: %s\nnodes:\n  %s:\n    state: passed\n" % (BID, BID))
 r = run("--force")
 check("T6 force 續跑歸檔", r.returncode == 0 and "CLOSE OK" in r.stdout, (r.stdout + r.stderr)[-300:])
+
+# T7: sessions 缺檔 → session_check 擋 (2026-07-07 gate)
+build_fixture()
+os.remove(os.path.join(root, ".framework", "memory", "sessions", BID + ".md"))
+r = run("--dry-run")
+check("T7 缺 sessions 擋", r.returncode == 2 and "session_check" in (r.stdout + r.stderr),
+      (r.stdout + r.stderr)[-300:])
 
 print(f"TOTAL FAILURES: {fails}")
 shutil.rmtree(root, ignore_errors=True)

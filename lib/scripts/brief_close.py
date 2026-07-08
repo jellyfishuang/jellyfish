@@ -7,10 +7,11 @@
 流程 (依序, 任一擋下即停):
   1. tree_check.py           — _tree.yaml schema
   2. verdict_check.py        — 已落檔 verdict 全量 schema
-  3. telemetry_extract.py    — gate 遙測抽取 + 落檔完整性 (自帶觸發門檻提示)
-  4. _mandate.json 若 status=active → 擋 (須先標 consumed/revoked)
-  5. mv briefs/{id} → briefs/_archive/{YYYY-MM}/{id}
-  6. _active.yaml 存在且 brief_id 相符 → 刪; 不符 → 保留 + 警告 (不誤殺別的 brief 的鎖)
+  3. session_check.py        — sessions/{id}.md 存在 + learning-loop §4 模板格式 (2026-07-07)
+  4. telemetry_extract.py    — gate 遙測抽取 + 落檔完整性 (自帶觸發門檻提示)
+  5. _mandate.json 若 status=active → 擋 (須先標 consumed/revoked)
+  6. mv briefs/{id} → briefs/_archive/{YYYY-MM}/{id}
+  7. _active.yaml 存在且 brief_id 相符 → 刪; 不符 → 保留 + 警告 (不誤殺別的 brief 的鎖)
 --force: 檢查 1-4 降為警告續跑 (使用者明示 skip 時才用, 記 trail)
 --dry-run: 只跑檢查 1-4, 不搬不刪
 exit: 0 成功 / 1 用法或內部錯 / 2 檢查未過。
@@ -25,6 +26,11 @@ import subprocess
 import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
+
+if hasattr(sys.stdout, "reconfigure"):
+    # 子檢查輸出含 UTF-8/替換字元, cp950 console 直接 print 會 UnicodeEncodeError (2026-07-07 實撞)
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    sys.stderr.reconfigure(encoding="utf-8", errors="replace")
 
 
 def run_check(script, arg):
@@ -51,6 +57,7 @@ def main():
     failures = []
     for name, script in (("tree_check", "tree_check.py"),
                          ("verdict_check", "verdict_check.py"),
+                         ("session_check", "session_check.py"),
                          ("telemetry_extract", "telemetry_extract.py")):
         rc, out = run_check(script, bdir)
         print(f"[{name}] exit={rc}")

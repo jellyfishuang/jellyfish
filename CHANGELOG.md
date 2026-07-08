@@ -3,6 +3,19 @@
 記錄 framework lib（`D:\Claude\.framework\lib`）的版本演變。版號採 SemVer，對應日後的 git tag。
 版號真實來源＝`lib/VERSION`；各 repo 複製時以該檔為準。
 
+## 0.13.0 — 2026-07-07
+
+Model tier 生效機制更正 + 收尾閘補強。動因：部署實例驗出舊制「main 解析 tier → models.yaml 取 model ID」**從未生效**——spawn 時 subagent 一直繼承 main 模型，tier 分層形同虛設；同日另補收尾兩個機械閘缺口（sessions 摘要無格式把關、advisory verdict 被 7 枚舉表誤殺）。本條目為部署端（SGC）2026-07-07 就地落地後回寫母體（2026-07-08 補），minor bump。
+
+- **Model tier 生效機制更正（八點 #8）**：實際生效靠 `.claude/agents/{role}.md` frontmatter `model:` 欄（harness 機械讀取，值用別名 haiku/sonnet/opus/fable）；`tier` 欄降為語意標籤、`models.yaml` 降為對照表。**禁止在 Task call 傳 model 參數**（spawn-time override 會蓋掉 frontmatter 分層）。已知坑：agent 定義在 session 啟動時載入快取——改 model: 欄對已開啟 session 不生效，只影響新 session
+- **`lib/models.yaml`**：更新現役模型（cheap=haiku-4-5 / mid=sonnet-5 / top=opus-4-8）+ 新增 `frontier: claude-fable-5` 階；補生效機制與快取坑警語
+- **`lib/scripts/model_tier_check.py`**（新）：掃 `~/.claude/projects/<project-slug>/*/subagents/agent-*.jsonl` transcript，role 權威來源＝meta.json `agentType`（fallback spawn prompt「你是 {role}」），實際 model 以前綴比對期望（避 dated suffix 差異）；掃描範圍無任何 role spawn 時 exit 2 防假綠。lib 版期望值讀 frontmatter `model:` 欄（generic）；部署端可改硬編碼拍板映射（SGC 首例，兩版對同資料輸出已驗一致）
+- **`lib/scripts/session_check.py`**（新，10 測試）：sessions/{brief_id}.md 機械 lint（存在性 / frontmatter 必填 10 鍵 / state 枚舉 / id 對檔名 / 必要 section；cancelled 免 section；brief_dir 與單檔兩模式）——learning-loop §11.1「摘要永遠寫」過去無機械把關
+- **`lib/scripts/brief_close.py`**：收尾鏈加掛 session_check（tree_check → verdict_check → **session_check** → telemetry_extract → mandate 擋 → mv → 刪鎖）；stdout/stderr 強制 UTF-8（cp950 console print 替換字元 UnicodeEncodeError 實撞）；tests +1（T7 缺 sessions 檔擋）
+- **`lib/scripts/verdict_check.py`**：支援 architecture-reviewer advisory verdict——`actor.advisory: true` 分流獨立驗證（verdict ∈ clean|findings、findings 七欄必填 + severity 枚舉、design_sketch 必附 + 八欄必填；規則＝roles/architecture-reviewer.md §6-6.1）。無新增測試（過渡債）
+- **接線**：control-plane §6.1 spawn 準備改「model → 不需 main 處理」+ §6.2 加「禁止 Task call 傳 model 參數」；claude-md-template step 7 收尾鏈補 session_check
+- 設計來源：SGC 部署實例 2026-07-07；外部模型審視「八點建議」#8
+
 ## 0.12.0 — 2026-07-06
 
 鐵律 gate 化第二批（verdict / tree schema 驗證器 + 收尾腳本化）+ stage 存在理由標注慣例。動因：typed-interfaces 與 e2r-tree 的「main 拒收 / 禁止自由發揮」過去靠 LLM 目測——部署實例僅有的 2 個留檔 verdict brief 就驗出 8 條 schema 違規（缺 actor.spec_id/type/round、pass 帶 fail check），目測從未真正把關。三個新驗證器主題，minor bump。

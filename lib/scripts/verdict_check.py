@@ -23,8 +23,52 @@ VERDICTS = {"pass", "fail", "ambiguity", "needs_decomposition", "needs_dependenc
 BY_TYPE = {"producer": {"pass", "partial", "ambiguity", "needs_decomposition", "needs_dependency"},
            "reviewer": {"pass", "fail", "ambiguity", "tool_error"}}
 
+ADVISORY_VERDICTS = {"clean", "findings"}
+FINDING_REQUIRED = ("severity", "dimension", "finding", "why_it_hurts_future",
+                    "suggested_direction", "evidence", "spec_checked")
+SKETCH_REQUIRED = ("focus", "change", "shape", "reuse_vs_new",
+                   "overlaps_existing", "pattern_divergence", "key_tradeoffs", "ack_required")
+
+
+def validate_advisory(data, label):
+    """advisory verdict (architecture-reviewer role.md §6): verdict ∈ clean|findings, 非 7 枚舉。
+    summary 免 200 字 WARN (§5.x 要求詳述三個未來測試)。"""
+    errs = []
+    v = data.get("verdict")
+    if v not in ADVISORY_VERDICTS:
+        errs.append(f"advisory verdict 非法: {v} (須 clean|findings)")
+    actor = data.get("actor") or {}
+    for k in ("role", "spec_id", "stage"):
+        if not str(actor.get(k) or "").strip():
+            errs.append(f"actor.{k} 必填")
+    if not isinstance(actor.get("round"), int):
+        errs.append(f"actor.round 須為整數: {actor.get('round')}")
+    if not str(data.get("summary") or "").strip():
+        errs.append("summary 必填")
+    findings = data.get("findings") or []
+    if v == "findings" and not findings:
+        errs.append("verdict=findings 須附 findings >=1")
+    if v == "clean" and findings:
+        errs.append("verdict=clean 不應有 findings")
+    for i, f in enumerate(findings):
+        for k in FINDING_REQUIRED:
+            if not str(f.get(k) or "").strip():
+                errs.append(f"findings[{i}].{k} 必填")
+        if f.get("severity") not in ("blocker", "advisory"):
+            errs.append(f"findings[{i}].severity 非法: {f.get('severity')} (須 blocker|advisory)")
+    sketch = data.get("design_sketch") or {}
+    if not sketch:
+        errs.append("design_sketch 必附 (role.md §6.1)")
+    else:
+        for k in SKETCH_REQUIRED:
+            if k not in sketch:
+                errs.append(f"design_sketch.{k} 必填")
+    return [f"{label}: {e}" for e in errs], []
+
 
 def validate(data, label):
+    if (data.get("actor") or {}).get("advisory") is True:
+        return validate_advisory(data, label)
     errs, warns = [], []
     v = data.get("verdict")
     if v not in VERDICTS:

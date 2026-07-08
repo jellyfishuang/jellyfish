@@ -1,13 +1,21 @@
 # Model tier → Claude model ID
 # 對應 design-summary 第 17.3 節
+# 2026-07-07 v0.13.0：更新現役模型 + 加 frontier 階（八點 #8）
 
-cheap: claude-haiku-4-5-20251001
-mid:   claude-sonnet-4-6
-top:   claude-opus-4-7
+cheap:    claude-haiku-4-5
+mid:      claude-sonnet-5
+top:      claude-opus-4-8
+frontier: claude-fable-5
+
+# ⚠ 生效機制（2026-07-07 更正）：本表是「tier → 模型」對照語意，實際生效靠
+# .claude/agents/{role}.md frontmatter 的 `model:` 欄（harness 機械讀取，值用別名
+# haiku/sonnet/opus/fable）。改 tier 必同步改 model 欄，否則不生效。
+# 驗證：python .framework/scripts/model_tier_check.py
+# 已知坑：agent 定義在 session 啟動時載入快取——改 model: 欄對已開啟 session 不生效，只影響新 session。
 
 # 覆寫順序（低 → 高）：
 # 1. Recipe 內 role 預設 tier（recipe yaml 設）
 # 2. Init 時使用者覆寫（寫進 .framework/.initialized.tier_overrides）
-# 3. 使用者手改 .claude/agents/{role}.md frontmatter
+# 3. 使用者手改 .claude/agents/{role}.md frontmatter（model: 欄為準）
 
 # Main session model 不受 framework 控制（使用者自選 Claude Code 啟動 model）

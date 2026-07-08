@@ -139,6 +139,7 @@
        對 y / edit 的條目，main 直接寫 memory（**不需另開 brief**；不需 spawn planner 評估）
 [ ] 7. 收尾機械段（2026-07-06 腳本化）：`python .framework/scripts/brief_close.py {brief_id}`
        串 tree_check（_tree.yaml schema lint）→ verdict_check（落檔 verdict 全量 schema）→
+       session_check（sessions/{id}.md 存在 + learning-loop §4 模板格式）→
        telemetry_extract（遙測抽取 + 完整性檢查 + 觸發門檻提示）→ _mandate.json 未收回擋 →
        mv .framework/briefs/{id}/ → _archive/{year-month}/{id}/ → 驗 brief_id 相符後刪 _active.yaml
        exit 2 → 顯示未過清單、修正後重跑；使用者明示 skip 才可 --force（記 trail）
