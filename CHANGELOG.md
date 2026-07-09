@@ -3,6 +3,23 @@
 記錄 framework lib（`D:\Claude\.framework\lib`）的版本演變。版號採 SemVer，對應日後的 git tag。
 版號真實來源＝`lib/VERSION`；各 repo 複製時以該檔為準。
 
+## 0.14.0 — 2026-07-09
+
+收斂稽核修正批 + lessons 格式定案。動因：SGC 部署實例對框架跑四路收斂稽核（部署漂移 / 流程一致 / schema 對齊 / 交叉引用）+ 對抗式驗證（反駁審查 + 模擬測試），驗出規範文件層系統性欠帳——control-plane 未跟上 2026-06-05（per-sub-brief 就地審）與 2026-07-06（local_test 代驗制 / 收尾腳本化）兩次制度變更、typed-interfaces 缺整套 advisory schema（真契約只活在 verdict_check.py 與 role md）、brief_stages state enum 只活在 tree_check hardcode——外加兩個實撞 bug（歸檔 WinError 32 殭屍鎖、L0 verdict 掃描盲區）。minor bump。
+
+- **typed-interfaces**：§2.2 `tool_error` 開放 producer（role 前置閘慣例，原 reviewer-only 使 engineer / test-writer / integration-tester 前置失敗 verdict 被機械閘拒收）；`artifact` 縮域 producer pass/partial 必填（其餘 verdict 無產出可 null——原規則連文件自己的 ambiguity 範例都過不了）；新增 §2.3 advisory schema 權威收錄（clean|findings + findings 七欄 + design_sketch 八欄 + `advisory`≠`adversarial` 撞名警告）
+- **`lib/scripts/verdict_check.py`**：BY_TYPE / artifact 縮域同步；`design_sketch.ack_required` 型別定案 canonical bool（字串 "true"/"false" 寬收——歷史落檔存在）；測試 8→18（producer tool_error 正反例、advisory 路徑首度補測、ack_required 型別）
+- **control-plane**：§3 骨架補 Step F2（brief_stages.local_test，[runtime] 由 integration-tester 代驗——原文仍主張「框架無法確認交使用者」）+ Step H 腳本化（brief_close.py）；§5.2 補 per-sub-brief 就地審段（engineering → code-reviewer → arch-review → unit_test → user_code_review + user_review.json + patch_dump）；Explore Step 5 補 arch plan_design + path-lint 無條件化；§6.3 落檔路徑補 local_test + L0 檔名定案
+- **e2r-tree**：`brief_stages` schema 首度明文（state enum pending/running/pass/fail/skipped + 與 pipeline_stages `done` 不對稱說明——部署實例實撞：main 依慣性寫 done 被 tree_check 擋）；pipeline_stages enum 補 `skipped`；**L0 verdict 檔名定案 `holistic.verdict.json`**——舊名 `L0-review.json` 不帶 `.verdict.json` 後綴，被 verdict_check 掃描規則漏掉，L0 verdict 從未被機械驗證（歷史歸檔不回溯）
+- **`lib/scripts/brief_close.py`**：歸檔佔用防護（cwd self-guard + rename 重試 ×3 + copytree 逐檔完整性驗證 fallback + **副本驗證成功即清鎖**——根治 WinError 32 半搬 + 殭屍 `_active.yaml`，部署實例實撞）；`--force` 不豁免 mandate 安全閘（原碼連 mandate_active 一起降級，違 §5.6.3）；測試 11→17（含外部程序佔用端到端重演）
+- **`lib/roles/engineer.md` / `test-writer.md`**：前置閘補「tool_error 必附 `tool_error_details{tool, error}`」——cold subagent 照 role md 字面 emit 會被 schema 閘退（對抗式驗證雙路交叉確認）
+- **learning-loop**：§8.1/§8.2 lessons/patterns 格式定案 section 式（`## L{N}:`/`## P{N}:` + Source/Status/Reference count，編號永不重編；棄原 frontmatter+bullet 制——實務 6:1 且全 repo 交叉引用靠 L{N} 定位，附格式沿革段）；§2 觸發時機補 local_test 條件
+- **amendment / batch-lock**：F2 之後 amend 觸及 code → 受影響 [runtime] 項須重跑 local_test（視窗跨 F2 的補跑義務）；`_active.yaml.phase` enum 補 `local_test`
+- **`lib/scripts/hooks_sync_tests.py`**：SRC 推導雙位置可跑（lib/scripts 與部署 .framework/scripts）——「部署位置跑全部 `*_tests.py`」成為合法一鍵 smoke
+- **design-summary**：檔頭加史料免責註記（現行制度以 `lib/core/*` 為準，版本迭代不回頭更新本檔）
+- **`lib/commands/framework-learn.md`**：ad-hoc 條目格式同步 section 式
+- 設計來源：SGC 部署實例 2026-07-09 四路稽核 + 對抗式驗證（V1 反駁審查 / V2 模擬測試）
+
 ## 0.13.0 — 2026-07-07
 
 Model tier 生效機制更正 + 收尾閘補強。動因：部署實例驗出舊制「main 解析 tier → models.yaml 取 model ID」**從未生效**——spawn 時 subagent 一直繼承 main 模型，tier 分層形同虛設；同日另補收尾兩個機械閘缺口（sessions 摘要無格式把關、advisory verdict 被 7 枚舉表誤殺）。本條目為部署端（SGC）2026-07-07 就地落地後回寫母體（2026-07-08 補），minor bump。
