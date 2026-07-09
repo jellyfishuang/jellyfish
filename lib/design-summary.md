@@ -1,5 +1,8 @@
 # Multi-Agent Team Framework — 設計總覽
 
+> ⚠️ **本檔為設計沿革快照（史料），現行制度以 `lib/core/*.md` 為準**——版本迭代（如 2026-07-06
+> local_test 代驗制 / brief_close 腳本化）不回頭更新本檔，衝突時一律以 core 文件為權威。
+>
 > 框架設計的完整入口文件。概念總覽見 [`../README.md`](../README.md)。
 >
 > 版本：0.4.0 · 最後更新：2026-06-05 · 逐版變更見 [`../CHANGELOG.md`](../CHANGELOG.md)

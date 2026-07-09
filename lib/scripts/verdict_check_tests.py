@@ -99,7 +99,7 @@ check("T12 producer ambiguity artifact null 合法 (縮域迴歸)", r.returncode
 ADV_ACTOR = {"role": "architecture-reviewer", "type": "reviewer", "spec_id": "b.a",
              "round": 1, "stage": "engineering", "adversarial": False, "advisory": True}
 SKETCH = {"focus": "implementation_design", "change": "x", "shape": "a->b", "reuse_vs_new": "復用 []",
-          "overlaps_existing": "N", "pattern_divergence": "N", "key_tradeoffs": ["t"], "ack_required": "false"}
+          "overlaps_existing": "N", "pattern_divergence": "N", "key_tradeoffs": ["t"], "ack_required": False}
 
 m = {"verdict": "clean", "actor": dict(ADV_ACTOR), "summary": "三未來測試皆健康", "design_sketch": dict(SKETCH)}
 r = run(m)
@@ -117,6 +117,14 @@ check("T15 advisory findings 缺必填欄擋", r.returncode == 2 and "why_it_hur
 m = {"verdict": "pass", "actor": dict(ADV_ACTOR), "summary": "x", "design_sketch": dict(SKETCH)}
 r = run(m)
 check("T16 advisory 回 7 枚舉 verdict 擋", r.returncode == 2 and "advisory verdict 非法" in r.stderr)
+
+m = {"verdict": "clean", "actor": dict(ADV_ACTOR), "summary": "x", "design_sketch": dict(SKETCH, ack_required="false")}
+r = run(m)
+check("T17 ack_required 字串 'false' 寬收", r.returncode == 0, r.stderr[:300])
+
+m = {"verdict": "clean", "actor": dict(ADV_ACTOR), "summary": "x", "design_sketch": dict(SKETCH, ack_required="maybe")}
+r = run(m)
+check("T18 ack_required 非法型別擋", r.returncode == 2 and "ack_required" in r.stderr)
 
 print(f"TOTAL FAILURES: {fails}")
 shutil.rmtree(root, ignore_errors=True)

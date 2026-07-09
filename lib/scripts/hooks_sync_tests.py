@@ -11,7 +11,18 @@ import tempfile
 PY = sys.executable
 HERE = os.path.dirname(os.path.abspath(__file__))
 SYNC = os.path.join(HERE, "hooks_sync.py")
-SRC = os.path.dirname(HERE)  # lib/
+
+
+def find_lib():
+    """雙位置可跑 (2026-07-09): 從 lib/scripts 跑 → dirname(HERE)=lib; 從部署 .framework/scripts
+    跑 → dirname(HERE)=.framework, 退而找同層 lib/。以 hooks-config.template.json 存在為判準。"""
+    for cand in (os.path.dirname(HERE), os.path.join(os.path.dirname(HERE), "lib")):
+        if os.path.isfile(os.path.join(cand, "hooks", "hooks-config.template.json")):
+            return cand
+    sys.exit(f"找不到 lib/hooks/hooks-config.template.json (自 {HERE} 推導)")
+
+
+SRC = find_lib()
 
 fake = tempfile.mkdtemp(prefix="hooks_sync_fake_")
 os.makedirs(f"{fake}/.framework/lib/hooks")

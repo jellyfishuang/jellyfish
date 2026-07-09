@@ -373,11 +373,14 @@ L0 holistic review 由 main 自做（不 spawn 專門 role）：
    - 各 sub-brief 結論彼此衝突？
    - 整體有達到 plan.md 的驗收條件？
    - 缺漏的 sub-brief？（plan 列了但 sub-brief.state=failed/cancelled）
-4. 產出 reviews/L0-review.json（依 typed-interfaces.md schema，actor.type=reviewer 但 reviewer name=main）
+4. 產出 reviews/holistic.verdict.json（依 typed-interfaces.md schema，actor.type=reviewer 但 reviewer name=main）
+   （**2026-07-09 檔名定案**：舊名 `L0-review.json` 不帶 `.verdict.json` 後綴，會被 `verdict_check.py`
+    的掃描規則（`reviews/*.verdict.json`）漏掉——L0 verdict 從未被機械驗證。統一為 `holistic.verdict.json`；
+    歷史歸檔的 `L0-review.json` 屬史料不回溯改名）
 5. pass → root.state=done；fail → root.state=exploring（回 Explore Step 3）
 ```
 
-L0-review.json 格式範例：
+holistic.verdict.json 格式範例：
 
 ```json
 {

@@ -578,7 +578,7 @@ model 唯一來源＝role 檔 frontmatter `model:` 欄。
 ```
 1. 從 subagent 最後訊息抓 ```json``` 區塊
 2. 寫 verdict 到 .framework/briefs/{root}/sub-briefs/{sub}/stages/{stage}/reviews/{role}.verdict.json
-   （brief 層 stage——planning-reviewer / architecture-reviewer plan_design / L0 / local_test 的 integration-tester——寫 .framework/briefs/{root}/reviews/{role}.verdict.json；
+   （brief 層 stage——planning-reviewer / architecture-reviewer plan_design / local_test 的 integration-tester——寫 .framework/briefs/{root}/reviews/{role}.verdict.json；**L0 holistic 固定檔名 `holistic.verdict.json`**（2026-07-09 定案，見 e2r-tree.md §5；舊名 L0-review.json 會被 verdict_check 掃描漏掉）；
     多輪同 role 檔名加 .round{N}；此落檔為 gate 遙測資料源，缺檔會被歸檔前機械檢查擋下）
 3. 機械驗 schema：python .framework/scripts/verdict_check.py <剛落檔的 verdict 路徑>
    （2026-07-06 起取代 LLM 目測；規則＝typed-interfaces §2-3 全量：7 枚舉 / actor 組合表 / 條件必填。

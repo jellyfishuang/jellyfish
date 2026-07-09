@@ -50,7 +50,7 @@ architecture-reviewer 是**議案制 advisory** role，不回 pass/fail、不卡
 | `actor` | 必填 `role` / `spec_id` / `stage` / `round`（int）；建議附 `type: reviewer` 與 `adversarial: false` |
 | `summary` | 必填；**免 200 字上限 WARN**（無 finding 時須說明三個未來測試怎麼看的，天然較長） |
 | `findings[]` | `verdict=findings` 時 ≥1、`clean` 時必為空。每項必填七欄：`severity`（`blocker`\|`advisory`）/ `dimension` / `finding` / `why_it_hurts_future` / `suggested_direction` / `evidence` / `spec_checked` |
-| `design_sketch` | **每次必附**（與 verdict 健康度無關）。必填八欄：`focus` / `change` / `shape` / `reuse_vs_new` / `overlaps_existing` / `pattern_divergence` / `key_tradeoffs` / `ack_required` |
+| `design_sketch` | **每次必附**（與 verdict 健康度無關）。必填八欄：`focus` / `change` / `shape` / `reuse_vs_new` / `overlaps_existing` / `pattern_divergence` / `key_tradeoffs` / `ack_required`（**bool**；字串 `"true"`/`"false"` 驗證器寬收） |
 
 欄位語意與範例見 `.claude/agents/architecture-reviewer.md` §6 / §6.1（role md 與 `verdict_check.py` 為此契約的雙方，本節為權威收錄）。
 

@@ -64,6 +64,11 @@ def validate_advisory(data, label):
         for k in SKETCH_REQUIRED:
             if k not in sketch:
                 errs.append(f"design_sketch.{k} 必填")
+        if "ack_required" in sketch:
+            ack = sketch["ack_required"]
+            # canonical bool; 字串 "true"/"false" 寬收 (歷史落檔存在, 2026-07-09 定型別)
+            if not (isinstance(ack, bool) or (isinstance(ack, str) and ack.lower() in ("true", "false"))):
+                errs.append(f"design_sketch.ack_required 型別非法: {ack!r} (canonical bool, 字串 'true'/'false' 寬收)")
     return [f"{label}: {e}" for e in errs], []
 
 
