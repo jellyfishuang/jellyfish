@@ -56,6 +56,8 @@ worktree: required
 | 上游 stage artifact 存在（若 plan 有依賴） | BLOCKING | ambiguity |
 | Bash 可用 | BLOCKING | tool_error |
 
+`tool_error` verdict **必附** `"tool_error_details": {"tool": "<壞掉的工具/前置>", "error": "<實際錯誤>"}`——schema 硬性必填（typed-interfaces §3.3），缺附會被機械閘退回。
+
 ## 4. 執行流程
 
 1. Read brief.md / plan.md / 上游 artifact

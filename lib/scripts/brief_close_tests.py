@@ -5,6 +5,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import time
 
 PY = sys.executable
 CLOSE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "brief_close.py")
@@ -132,6 +133,42 @@ os.remove(os.path.join(root, ".framework", "memory", "sessions", BID + ".md"))
 r = run("--dry-run")
 check("T7 缺 sessions 擋", r.returncode == 2 and "session_check" in (r.stdout + r.stderr),
       (r.stdout + r.stderr)[-300:])
+
+# T7b: mandate active 不受 --force 豁免 (安全閘)
+build_fixture()
+w("_mandate.json", json.dumps({"brief_id": BID, "granted_at": "2026-01-01T10:00:00", "status": "active",
+                               "auto_advance": {"sub_briefs": []}}))
+r = run("--force")
+check("T7b force 不豁免 mandate active", r.returncode == 2 and "不豁免" in (r.stdout + r.stderr)
+      and os.path.isdir(bdir), (r.stdout + r.stderr)[-300:])
+
+# T8: 自身 cwd 在 brief 目錄內 → self-guard chdir, 照常歸檔 (2026-07-09 WinError 32 防護)
+build_fixture()
+r = subprocess.run([PY, CLOSE, BID, "--root", root], cwd=bdir,
+                   capture_output=True, text=True, encoding="utf-8", errors="replace", env=ENV)
+import datetime as _dt
+_ym = _dt.date.today().strftime("%Y-%m")
+check("T8 自身 cwd 防護歸檔成功", r.returncode == 0 and "CLOSE OK" in r.stdout
+      and os.path.isdir(os.path.join(briefs, "_archive", _ym, BID)),
+      (r.stdout + r.stderr)[-400:])
+check("T8 鎖已清", not os.path.isfile(os.path.join(briefs, "_active.yaml")))
+
+# T9: 外部程序 cwd 佔用 brief 目錄 → copy fallback 歸檔完整 + 鎖照清 (殘骸僅 WARN)
+build_fixture()
+holder = subprocess.Popen([PY, "-c", "import time; time.sleep(60)"], cwd=bdir)
+try:
+    time.sleep(0.3)
+    r = run()
+finally:
+    holder.terminate()
+    holder.wait()
+out = r.stdout + r.stderr
+archived = os.path.isdir(os.path.join(briefs, "_archive", _ym, BID))
+check("T9 佔用下歸檔成功", r.returncode == 0 and "CLOSE OK" in r.stdout and archived, out[-400:])
+check("T9 鎖已清 (殘骸不擋 lock)", not os.path.isfile(os.path.join(briefs, "_active.yaml")))
+if os.path.isdir(bdir):  # Windows: rename/rmtree 被佔用擋 → 須有殘骸 WARN; POSIX rename 可成則無殘骸
+    check("T9 殘骸有 WARN 指引", "殘骸" in out, out[-400:])
+    shutil.rmtree(bdir, ignore_errors=True)
 
 print(f"TOTAL FAILURES: {fails}")
 shutil.rmtree(root, ignore_errors=True)

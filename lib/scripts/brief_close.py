@@ -11,10 +11,15 @@
   4. telemetry_extract.py    — gate 遙測抽取 + 落檔完整性 (自帶觸發門檻提示)
   5. _mandate.json 若 status=active → 擋 (須先標 consumed/revoked)
   6. mv briefs/{id} → briefs/_archive/{YYYY-MM}/{id}
+     Windows 佔用防護 (2026-07-09 WinError 32 實撞——外部程序 cwd 停在 brief 目錄內即鎖死 rename):
+     rename 重試 ×3 → fallback copytree + 逐檔完整性驗證; 副本驗證通過即視為歸檔成功,
+     源目錄清除為 best-effort (殘骸不阻斷收尾, 印手動清除指引); 自身 cwd 在 brief 目錄內時先 chdir root
   7. _active.yaml 存在且 brief_id 相符 → 刪; 不符 → 保留 + 警告 (不誤殺別的 brief 的鎖)
---force: 檢查 1-4 降為警告續跑 (使用者明示 skip 時才用, 記 trail)
+     (在歸檔副本驗證成功後即清鎖——源目錄殘骸不再擋 lock 清理; 歸檔完全失敗才保留鎖 + exit 1)
+--force: 檢查 1-4 降為警告續跑 (使用者明示 skip 時才用, 記 trail); **不豁免第 5 項 mandate 閘**——
+         status=active 一律 exit 2 (歸檔永不可預授權, 收回只需使用者一句確認)
 --dry-run: 只跑檢查 1-4, 不搬不刪
-exit: 0 成功 / 1 用法或內部錯 / 2 檢查未過。
+exit: 0 成功 / 1 用法或內部錯或歸檔失敗 / 2 檢查未過。
 
 前置 (本 script 不代辦, main 先完成): holistic_review 寫入 / local_test / sessions 摘要 / 品質評分 / _suggestions 處理。"""
 import argparse
@@ -24,6 +29,7 @@ import os
 import shutil
 import subprocess
 import sys
+import time
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 
@@ -37,6 +43,43 @@ def run_check(script, arg):
     r = subprocess.run([sys.executable, os.path.join(HERE, script), arg],
                        capture_output=True, text=True, encoding="utf-8", errors="replace")
     return r.returncode, (r.stdout + r.stderr).strip()
+
+
+def files_snapshot(base):
+    snap = {}
+    for dirpath, _d, fnames in os.walk(base):
+        for f in fnames:
+            p = os.path.join(dirpath, f)
+            snap[os.path.relpath(p, base)] = os.path.getsize(p)
+    return snap
+
+
+def archive_move(bdir, dest):
+    """歸檔搬移, Windows 佔用防護 (2026-07-09 WinError 32 實撞)。
+    回傳 (ok, husk_left): ok=歸檔副本已完整落地; husk_left=源目錄殘骸未清 (被外部程序佔用)。"""
+    for attempt in range(3):
+        try:
+            os.rename(bdir, dest)
+            return True, False
+        except OSError:
+            if attempt < 2:
+                time.sleep(0.3)
+    # rename 全敗 (跨卷 / 目錄被佔用) → copy + 驗證; 副本可信才算歸檔成功
+    try:
+        shutil.copytree(bdir, dest)
+    except OSError as e:
+        shutil.rmtree(dest, ignore_errors=True)  # 半份副本必撤, 避免「歸檔目標已存在」假象
+        print(f"歸檔 copy 失敗: {e}", file=sys.stderr)
+        return False, False
+    if files_snapshot(bdir) != files_snapshot(dest):
+        shutil.rmtree(dest, ignore_errors=True)
+        print("歸檔副本完整性驗證不過 (檔案清單/大小不符), 已撤半份副本", file=sys.stderr)
+        return False, False
+    try:
+        shutil.rmtree(bdir)
+        return True, False
+    except OSError:
+        return True, True  # 副本完整, 只是源目錄清不掉 (外部程序佔用) — 不阻斷收尾
 
 
 def main():
@@ -53,6 +96,9 @@ def main():
     if not os.path.isdir(bdir):
         print(f"brief 目錄不存在: {bdir}", file=sys.stderr)
         return 1
+    cwd = os.path.normcase(os.getcwd())
+    if cwd == os.path.normcase(bdir) or cwd.startswith(os.path.normcase(bdir) + os.sep):
+        os.chdir(root)  # 自身 cwd 在 brief 目錄內會鎖死歸檔 rename (WinError 32)
 
     failures = []
     for name, script in (("tree_check", "tree_check.py"),
@@ -69,6 +115,7 @@ def main():
             print(f"{name} 內部錯誤, 中止", file=sys.stderr)
             return 1
 
+    mandate_active = False
     mpath = os.path.join(bdir, "_mandate.json")
     if os.path.isfile(mpath):
         try:
@@ -77,10 +124,14 @@ def main():
             status = "壞 JSON"
         if status == "active":
             print("[mandate] status=active——離場授權未收回, 須先與使用者確認標 consumed/revoked", file=sys.stderr)
-            failures.append("mandate_active")
+            mandate_active = True
         else:
             print(f"[mandate] status={status} (trail, 不擋)")
 
+    if mandate_active:
+        # 安全閘: 不受 --force 降級 (§5.6.3 歸檔永不可預授權; 收回 mandate 只需與使用者一句確認)
+        print("收尾檢查未過: ['mandate_active']——--force 不豁免此項, 須先標 consumed/revoked", file=sys.stderr)
+        return 2
     if failures:
         if not a.force:
             print(f"收尾檢查未過: {failures}——修正後重跑; 使用者明示 skip 才可 --force", file=sys.stderr)
@@ -97,7 +148,11 @@ def main():
         print(f"歸檔目標已存在: {dest}", file=sys.stderr)
         return 1
     os.makedirs(os.path.dirname(dest), exist_ok=True)
-    shutil.move(bdir, dest)
+    ok, husk = archive_move(bdir, dest)
+    if not ok:
+        print(f"歸檔失敗——確認無程序佔用 {bdir} (shell cwd 勿停在該目錄內) 後重跑; _active.yaml 保留未動",
+              file=sys.stderr)
+        return 1
     print(f"歸檔: {dest}")
 
     active = os.path.join(briefs, "_active.yaml")
@@ -110,6 +165,9 @@ def main():
             print(f"WARN _active.yaml 的 brief_id 非 {a.brief_id}——保留不刪 (可能屬另一 brief)", file=sys.stderr)
     else:
         print("_active.yaml 不存在 (無鎖可清)")
+    if husk:
+        print(f"WARN 源目錄殘骸未清 (被其他程序佔用; 歸檔副本已完整): 佔用釋放後手動 `rmdir {bdir}`",
+              file=sys.stderr)
     print(f"CLOSE OK  {a.brief_id} → _archive/{ym}/")
     return 0
 

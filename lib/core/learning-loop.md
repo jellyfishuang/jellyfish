@@ -18,7 +18,7 @@
 
 ## 2. 觸發時機
 
-Brief 完成（L0 holistic review pass）→ main 進入學習迴圈。
+Brief 完成（L0 holistic review pass **+ brief_stages.local_test 完成**——依 pipeline.yaml 配置，new_feature 有此 stage；無此 stage 的 pipeline 以 holistic pass 為準）→ main 進入學習迴圈。
 
 不觸發的情境：
 - Brief 取消（`/brief-cancel`）→ 不跑學習迴圈，只寫 sessions 簡短紀錄

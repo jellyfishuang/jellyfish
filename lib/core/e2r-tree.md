@@ -79,6 +79,15 @@ nodes:
       explore: 1
       l0_review: 0
     holistic_review: null             # null | pass | fail（L0 holistic review 結果）
+    brief_stages:                     # 僅 L0、且 pipeline.yaml 有 brief_stages 配置時才有（new_feature: local_test）
+      local_test:
+        state: pending                # 見 §3.1 brief-stage enum：pending|running|pass|fail|skipped（注意：終態是 pass/fail，非 done）
+        actor: agent
+        role: integration-tester
+        started_at: null
+        completed_at: null
+        result_summary: null          # 一句話結果（pass/partial 摘要）
+        report_path: null             # ./stages/local_test/integration_test_report.md
 
   2026-05-06-slot-revenue-q2.a:
     state: done
@@ -141,6 +150,7 @@ nodes:
 | `nodes.{id}.pipeline_stages` | object[] | 僅 L1 有；展開的 stage 進度。每項含 `name`, `state`, `rounds: {producer, reviewer, adversarial}`, `verdict` |
 | `nodes.{id}.rounds` | object | 僅 L0 有；各階段 review 輪數累積（含 explore / l0_review） |
 | `nodes.{id}.holistic_review` | enum \| null | 僅 L0 有；L0 review 結果 |
+| `nodes.{id}.brief_stages` | object | 僅 L0、pipeline.yaml 有 `brief_stages` 配置時有（new_feature 為 `local_test`）。每 stage 含 `state`（§3.1 brief-stage enum）, `actor`, `role`, `started_at`, `completed_at`, `result_summary`, `report_path` |
 | `nodes.{id}.decomposition_origin` | enum | sub-brief 從哪來（Explore Step 4 / Execute needs_decomposition） |
 | `nodes.{id}.worktree` | string \| null | 對應 worktree 路徑 |
 | `nodes.{id}.amendments` | object[] | 僅 L1 有；amendment 紀錄陣列。見 §2.5。初始可為 `[]` 或省略 |
@@ -161,6 +171,7 @@ nodes:
 | Sub-brief 完成 | sub-brief.state=done, completed_at, artifact=./final.md |
 | Sub-brief needs_decomposition 同意 | 新增 children（注意：違反 2 層限制的拒絕） |
 | L0 holistic review | root.holistic_review |
+| brief_stages.local_test 啟動 / 完成 | root.brief_stages.local_test = {state: running → pass\|fail\|skipped, started_at, completed_at, result_summary, report_path} |
 | Brief 完成 | root.state=done, completed_at |
 | `/brief-amend` 開始 | sub-brief.amendments[] append 新項，state=amending |
 | Amendment producer 回 verdict（終態） | sub-brief.amendments[i].state=done\|done_with_notes\|rejected\|cancelled, completed_at |
@@ -234,6 +245,22 @@ amendments:
 | `done` | 此 stage 最終 reviewer pass |
 | `failed` | 此 stage 累積 4 輪 reviewer fail（依 review-loop） |
 | `paused` | 此 stage 因 parent re-Explore 暫停 |
+| `skipped` | 此 stage 被 plan 明示跳過（如 unit_test 於無 test 檔 repo；附 `skip_reason`） |
+
+**Brief-stage state enum**（`brief_stages.{stage}.state`，僅 L0 用；機械閘 `tree_check.py`）：
+
+| Brief-stage state | 描述 |
+|---|---|
+| `pending` | 尚未啟動 |
+| `running` | integration-tester 正在跑 |
+| `pass` | 整合驗證通過 |
+| `fail` | 整合驗證不過（打回 planner / engineer 後重跑） |
+| `skipped` | 使用者明示 skip |
+
+> ⚠️ **`done` vs `pass` 不對稱是刻意設計**：`pipeline_stages` 記「執行完成」（done——stage 跑完且過審），
+> `brief_stages` 記「驗證結果」（pass/fail——local_test 是判定不是產出）。把 local_test state 寫成
+> `done` 會被 `tree_check.py` 擋（2026-07-09 實撞——文件此前未明文此 enum，致 main 依 pipeline_stages
+> 慣性寫 done、收尾重跑一輪）。
 
 ### 3.2 L0 vs L1 狀態差異
 

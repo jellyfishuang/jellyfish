@@ -26,17 +26,35 @@
 | `ambiguity` | 缺資訊無法繼續 | producer / reviewer | 自行補 / 升級 L0 / 累積升級 |
 | `needs_decomposition` | 任務太大 | producer | Main 判斷是否拆 sub-brief |
 | `needs_dependency` | 需新依賴 | producer | 升級使用者裝 |
-| `tool_error` | 檢查工具本身壞 | reviewer | 升級使用者修工具 |
+| `tool_error` | 工具或前置環境壞（檢查工具失效 / role 前置條件不成立） | producer / reviewer | 升級使用者修 |
 | `partial` | 部分完成 | producer | Main 判斷接受或要求補完 |
 
 ### 2.2 Verdict 與 actor.type 對應
 
 | Actor type | 可用 verdicts |
 |---|---|
-| `producer` | `pass`, `partial`, `ambiguity`, `needs_decomposition`, `needs_dependency` |
+| `producer` | `pass`, `partial`, `ambiguity`, `needs_decomposition`, `needs_dependency`, `tool_error` |
 | `reviewer` | `pass`, `fail`, `ambiguity`, `tool_error` |
 
-不在上表的組合 → main 拒收，視為 schema 違規（轉 `tool_error` 處理：role 寫錯 verdict）。
+不在上表的組合 → main 拒收，視為 schema 違規（轉 `tool_error` 處理：role 寫錯 verdict）。**例外**：`actor.advisory: true` 的 verdict 不套本表，走 §2.3 advisory 分支。
+
+> **2026-07-09 變更**：`tool_error` 開放給 producer。動機：engineer / test-writer / integration-tester 的 role md 前置閘（§3 prerequisite gate）慣例上以 `tool_error` 回報「前置條件不成立」（worktree 衝突、必要檔缺失、Bash 不可用等），原表僅 reviewer 可用會使這些 verdict 被機械驗證拒收。producer 的 `tool_error` 同樣必附 `tool_error_details`（§3.3），且 `artifact` 可為 null（§3.2）。
+
+### 2.3 Advisory verdict（architecture-reviewer 專用例外）
+
+architecture-reviewer 是**議案制 advisory** role，不回 pass/fail、不卡輪數，故不用上述 7 枚舉。判別開關是 **`actor.advisory: true`**——出現此鍵時整份 verdict 改按本節驗：
+
+| 項目 | 規則 |
+|---|---|
+| `verdict` | enum：`clean`（無 finding）\| `findings`（有 finding） |
+| `actor` | 必填 `role` / `spec_id` / `stage` / `round`（int）；建議附 `type: reviewer` 與 `adversarial: false` |
+| `summary` | 必填；**免 200 字上限 WARN**（無 finding 時須說明三個未來測試怎麼看的，天然較長） |
+| `findings[]` | `verdict=findings` 時 ≥1、`clean` 時必為空。每項必填七欄：`severity`（`blocker`\|`advisory`）/ `dimension` / `finding` / `why_it_hurts_future` / `suggested_direction` / `evidence` / `spec_checked` |
+| `design_sketch` | **每次必附**（與 verdict 健康度無關）。必填八欄：`focus` / `change` / `shape` / `reuse_vs_new` / `overlaps_existing` / `pattern_divergence` / `key_tradeoffs` / `ack_required` |
+
+欄位語意與範例見 `.claude/agents/architecture-reviewer.md` §6 / §6.1（role md 與 `verdict_check.py` 為此契約的雙方，本節為權威收錄）。
+
+> ⚠️ **`advisory` ≠ `adversarial`**：兩鍵近音但語意完全不同。`actor.advisory: true` 是 architecture-reviewer 的 schema 分流開關；`actor.adversarial: true` 是一般 reviewer 的對抗式二審標記（§3.2）。誤把 `advisory` 打成 `adversarial` 會讓 `clean|findings` 掉進 7 枚舉驗證被判非法。
 
 ---
 
@@ -107,7 +125,7 @@
 | `actor.stage` | string | pipeline stage 名稱 |
 | `actor.adversarial` | boolean | 預設 `false`。Reviewer 在 `mode: adversarial` 模式跑時必填 `true`（pipeline.yaml `second_review: true` 觸發此模式；見 control-plane.md §5.3 + role md §5.y）。Producer 永遠 `false`。 |
 | `summary` | string | ≤ 200 字，人類可讀摘要 |
-| `artifact` | string \| null | 主要 artifact 路徑（producer 必填；reviewer 通常 null） |
+| `artifact` | string \| null | 主要 artifact 路徑（producer 於 `pass` / `partial` 必填；其餘 verdict 無產出可 null；reviewer 通常 null） |
 
 ### 3.3 條件必填欄位（按 verdict）
 
@@ -256,7 +274,7 @@
 }
 ```
 
-### 4.6 `tool_error`（reviewer）
+### 4.6 `tool_error`（reviewer；producer 前置閘同構——actor.type 換 producer、artifact null）
 
 ```json
 {
@@ -358,8 +376,9 @@
 ```
 1. Spawn role 後，等 subagent 結束
 2. 從最後一段訊息抓 JSON（用 ```json ... ``` 框定）
-3. 驗證 schema：
-   - verdict 在 7 個之中
+3. 驗證 schema（機械：`verdict_check.py`）：
+   - `actor.advisory: true` → 走 §2.3 advisory 分支（clean|findings + findings 七欄 + design_sketch 八欄）
+   - 否則 verdict 在 7 個之中
    - actor.* 欄位齊全
    - 條件必填欄位按 verdict 檢查
 4. Schema 通過 → 按 verdict 路由：

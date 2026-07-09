@@ -63,6 +63,8 @@ worktree: required
 | coverage 工具可執行 | non-blocking | 警告：coverage 檢查跳過 |
 | Bash 可用 | BLOCKING | tool_error |
 
+`tool_error` verdict **必附** `"tool_error_details": {"tool": "<壞掉的工具/前置>", "error": "<實際錯誤>"}`——schema 硬性必填（typed-interfaces §3.3），缺附會被機械閘退回。
+
 ## 4. 執行流程
 
 1. Read brief.md / plan.md / 上游 stage artifact（特別是 engineer.output.md 與 engineer.diff-summary.md，了解被測範圍）

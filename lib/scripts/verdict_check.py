@@ -7,9 +7,10 @@
 
 規則:
   verdict ∈ 7 枚舉; actor.{role,type,spec_id,round,stage} 必填 + adversarial bool
-  actor.type × verdict 組合表 (producer: pass/partial/ambiguity/needs_decomposition/needs_dependency;
+  actor.type × verdict 組合表 (producer: pass/partial/ambiguity/needs_decomposition/needs_dependency/tool_error;
                                reviewer: pass/fail/ambiguity/tool_error)
-  summary 必填 (>200 字僅 WARN); producer 的 artifact 必填
+    — tool_error 2026-07-09 開放 producer (role 前置閘慣例: engineer/test-writer/integration-tester 前置失敗時 emit)
+  summary 必填 (>200 字僅 WARN); producer 的 artifact 於 pass/partial 必填 (其餘 verdict 無產出可 null)
   條件必填 (§3.3): pass(reviewer)→checks 全 pass|skipped; fail→checks ≥1 fail;
     ambiguity→questions ≥1 且 ≥1 blocking; needs_decomposition→decomposition_proposal{rationale, sub_briefs≥1};
     needs_dependency→missing_dependency{package, reason}; tool_error→tool_error_details{tool, error};
@@ -20,7 +21,7 @@ import os
 import sys
 
 VERDICTS = {"pass", "fail", "ambiguity", "needs_decomposition", "needs_dependency", "tool_error", "partial"}
-BY_TYPE = {"producer": {"pass", "partial", "ambiguity", "needs_decomposition", "needs_dependency"},
+BY_TYPE = {"producer": {"pass", "partial", "ambiguity", "needs_decomposition", "needs_dependency", "tool_error"},
            "reviewer": {"pass", "fail", "ambiguity", "tool_error"}}
 
 ADVISORY_VERDICTS = {"clean", "findings"}
@@ -90,8 +91,8 @@ def validate(data, label):
         errs.append("summary 必填")
     elif len(str(data["summary"])) > 200:
         warns.append(f"summary 超過 200 字 ({len(str(data['summary']))})")
-    if at == "producer" and not str(data.get("artifact") or "").strip():
-        errs.append("producer 的 artifact 必填")
+    if at == "producer" and v in ("pass", "partial") and not str(data.get("artifact") or "").strip():
+        errs.append("producer 的 artifact 於 pass/partial 必填")
 
     checks = data.get("checks") or []
     if v == "pass" and at == "reviewer":

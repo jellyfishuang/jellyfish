@@ -71,6 +71,10 @@ amendment 層信任使用者作為 reviewer（§1.1）——小範圍修訂該�
 
 任一條件不滿足 → 顯示具體原因並建議替代指令。
 
+> **F2 之後 amend 的補跑義務（2026-07-09）**：若 `_tree.yaml.brief_stages.local_test.state == pass`
+> 且 amendment 改動觸及 code → 該 local_test 結果失效，main 必提示並對受影響的 [runtime] 項重跑
+> local_test（可縮範圍），重跑 pass 才可進 Step H（control-plane §3 Step F'）。
+
 ---
 
 ## 3. 流程：四步走完

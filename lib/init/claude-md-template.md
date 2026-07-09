@@ -100,15 +100,15 @@
 [ ] 2. 跑 brief_stages.local_test（pipeline.yaml.brief_stages 定義，actor=agent，role=integration-tester）：
        a. main spawn integration-tester subagent
           input: brief.md / plan.md（含 [runtime] 條目） / clarifications.md / affected_repos /
-                 各 sub-brief stages/engineering/engineer.output.md / local test harness 路徑
-       b. agent 流程（見 roles/integration-tester.md §4）：
-          - Step 1 讀 plan [runtime] + harness 依賴鏈文件 / 範本 simulator
-          - Step 2 確認所需 services 狀態（health check / grpcurl list）；missing → needs_user_assist
-          - Step 3 seed test data（若需要，依 harness 既有 seed 設定 pattern）
-          - Step 4 寫 fake_<provider>/（沿 harness 既有 fake_* pattern）；outbound 用 mock_<provider>_<purpose>/
-          - Step 5 對每條 [runtime] 觸發 → 觀察 response/log → 記 pass/fail + evidence
+                 各 sub-brief stages/engineering/engineer.output.md / SGC_LocalTest 路徑
+       b. agent 流程（見 .claude/agents/integration-tester.md §4）：
+          - Step 1 讀 plan [runtime] + SGC_LocalTest CLAUDE.md / 範本 simulator
+          - Step 2 確認 8 services 狀態（health check / grpcurl list）；missing → needs_user_assist
+          - Step 3 seed test data（若需要，動 SGC_LocalTest/mockConfig.go pattern）
+          - Step 4 寫 fake_<provider>/main.go（沿 fake_acewin pattern）；outbound 路徑用 mock_<provider>_<purpose>/
+          - Step 5 對每條 [runtime] 觸發 → 觀察 response/log/DB → 記 pass/fail + evidence
           - Step 6 寫 integration_test_report.md + verdict JSON
-       c. agent 回 verdict: pass | partial | needs_user_assist | ambiguity
+       c. agent 回 verdict: pass | fail | needs_user_assist | ambiguity
        d. 寫 _tree.yaml.nodes.{root}.brief_stages.local_test = {state, started_at, completed_at, result_summary, report_path}
        e. fail 時：main 用 AskUserQuestion 問「amendment / rollback / skip」→
           - amendment：走 /brief-amend 流程
@@ -118,8 +118,8 @@
        g. ambiguity：main 處理 plan 與實作對不上的情況（通常回 planner 或開 amendment）
        h. cancelled brief / planning_only pipeline 不跑此 stage（無 runtime 可驗）
        i. brief_stages 區塊在 pipeline.yaml 缺失 → 跳過此步 + log warn
-       j. **不打對外真外部 domain**：本 stage 的 simulator/mock 在 harness 範圍內運作；outbound 路徑用本機 mock server 取代
-[ ] 3.（per-sub-brief 制）user_code_review 與 unit_test 移至 per-sub-brief——sub-brief 完成當下就地跑
+       j. **不打對外真 provider domain**：本 stage 的 simulator/mock 在 SGC_LocalTest 範圍內運作；outbound 路徑用本機 mock server 取代
+[ ] 3.（2026-06-05 制）user_code_review 與 unit_test 已移至 per-sub-brief——sub-brief 完成當下就地跑
        engineering → code-reviewer → architecture-reviewer → unit_test（plan 可 skip）→ user_code_review（actor=user），
        全過該 sub-brief 才算 done；brief 層不再重跑 user_code_review
        ⚠️ user_code_review 收 stage 時 main 必寫 sub-briefs/{sub}/reviews/user_review.json：
@@ -130,8 +130,8 @@
        （臨時 index 產含 untracked 的 --binary patch、不碰真實 index；engineer 不 commit 時 working tree 是唯一副本，
         patch 使成果可獨立恢復；歸檔檢查缺 patch 出 WARN）
 [ ] 4. 寫 .framework/memory/sessions/{brief_id}.md 摘要（強制，無批准門檻、無條件）
-       Schema 見 .framework/lib/core/learning-loop.md § 4。含 local_test 與各 sub-brief user_code_review 結果。
-       若 step 4 在 step 2 之前寫過（main 提前寫），需在此補完。
+       Schema 見 .framework/lib/core/learning-loop.md § 4
+       含 local_test 與各 sub-brief user_code_review 結果。若 step 4 在 step 2 之前寫過（main 提前寫），需在此補完。
 [ ] 5. 主動詢問品質評分（⭐ / ⚠️ / ❌ / 跳過）— 不要等使用者開口
        **必在 local_test pass + 各 sub-brief user_code_review 皆 pass 後才問**——避免「評分時還不知道整合測試結果」
 [ ] 6. Read .framework/briefs/{id}/_suggestions.json（若有），逐條顯示 suggest_* 給使用者：
@@ -139,7 +139,7 @@
        對 y / edit 的條目，main 直接寫 memory（**不需另開 brief**；不需 spawn planner 評估）
 [ ] 7. 收尾機械段（2026-07-06 腳本化）：`python .framework/scripts/brief_close.py {brief_id}`
        串 tree_check（_tree.yaml schema lint）→ verdict_check（落檔 verdict 全量 schema）→
-       session_check（sessions/{id}.md 存在 + learning-loop §4 模板格式）→
+       session_check（sessions 摘要 learning-loop §4 格式）→
        telemetry_extract（遙測抽取 + 完整性檢查 + 觸發門檻提示）→ _mandate.json 未收回擋 →
        mv .framework/briefs/{id}/ → _archive/{year-month}/{id}/ → 驗 brief_id 相符後刪 _active.yaml
        exit 2 → 顯示未過清單、修正後重跑；使用者明示 skip 才可 --force（記 trail）
@@ -148,9 +148,8 @@
 ```
 
 **brief_stages 跑哪些**：依 `pipeline.yaml.pipelines.{recipe}.brief_stages`。
-- `new_feature` 預設 brief 層僅 `local_test`（`user_code_review` / `unit_test` 為 per-sub-brief stage）
+- `new_feature` 預設 brief 層僅 `local_test`（`user_code_review` / `unit_test` 為 per-sub-brief stage，2026-06-05 起）
 - `bug_fix` / `planning_only` 預設不含（可在該 pipeline 顯式加 brief_stages 覆寫）
-- recipe 未定義 `brief_stages` / 無 local test harness → 整段跳過（step 2/3 略過，直接走 step 4）
 
 **_tree.yaml.nodes.{root}.brief_stages schema**：
 
@@ -162,7 +161,7 @@ brief_stages:
     completed_at: ISO ts
     result_summary: "使用者回報摘要"
     on_fail_choice: amendment | rollback | skip   # 僅 fail 時填
-  # user_code_review 不在 brief_stages（per-sub-brief stage，記於各 sub-brief 節點）
+  # user_code_review 不在 brief_stages（2026-06-05 起為 per-sub-brief stage，記於各 sub-brief 節點）
 ```
 
 **容易犯的錯（必避免）**：

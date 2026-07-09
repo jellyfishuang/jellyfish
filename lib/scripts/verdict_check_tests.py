@@ -74,6 +74,50 @@ r = subprocess.run([PY, CHECK, os.path.join(root, "brief")], capture_output=True
                    encoding="utf-8", errors="replace", env=ENV)
 check("T8 brief_dir 模式", r.returncode == 0 and "files=1" in r.stdout, r.stdout[:200])
 
+# 2026-07-09: tool_error 開放 producer (role 前置閘) + artifact 縮域 pass/partial + advisory 路徑
+PROD = {"role": "engineer", "type": "producer", "spec_id": "b.a", "round": 0, "stage": "engineering"}
+
+m = {"verdict": "tool_error", "actor": dict(PROD), "summary": "worktree 前置失敗", "artifact": None,
+     "tool_error_details": {"tool": "git", "error": "worktree already exists", "remediation_hint": "清 worktree"}}
+r = run(m)
+check("T9 producer tool_error 合法 (artifact null)", r.returncode == 0, r.stderr[:300])
+
+m = {"verdict": "tool_error", "actor": dict(PROD), "summary": "x", "artifact": None}
+r = run(m)
+check("T10 producer tool_error 缺 details 擋", r.returncode == 2 and "tool_error_details" in r.stderr)
+
+m = {"verdict": "fail", "actor": dict(PROD), "summary": "x", "artifact": None,
+     "checks": [{"name": "t", "result": "fail", "evidence": "boom"}]}
+r = run(m)
+check("T11 producer fail 仍組合擋", r.returncode == 2 and "組合非法" in r.stderr)
+
+m = {"verdict": "ambiguity", "actor": dict(PROD), "summary": "x", "artifact": None,
+     "questions": [{"id": "q1", "text": "?", "severity": "blocking"}]}
+r = run(m)
+check("T12 producer ambiguity artifact null 合法 (縮域迴歸)", r.returncode == 0, r.stderr[:300])
+
+ADV_ACTOR = {"role": "architecture-reviewer", "type": "reviewer", "spec_id": "b.a",
+             "round": 1, "stage": "engineering", "adversarial": False, "advisory": True}
+SKETCH = {"focus": "implementation_design", "change": "x", "shape": "a->b", "reuse_vs_new": "復用 []",
+          "overlaps_existing": "N", "pattern_divergence": "N", "key_tradeoffs": ["t"], "ack_required": "false"}
+
+m = {"verdict": "clean", "actor": dict(ADV_ACTOR), "summary": "三未來測試皆健康", "design_sketch": dict(SKETCH)}
+r = run(m)
+check("T13 advisory clean 合法", r.returncode == 0, r.stderr[:300])
+
+m = {"verdict": "clean", "actor": dict(ADV_ACTOR), "summary": "x"}
+r = run(m)
+check("T14 advisory 缺 design_sketch 擋", r.returncode == 2 and "design_sketch" in r.stderr)
+
+m = {"verdict": "findings", "actor": dict(ADV_ACTOR), "summary": "x", "design_sketch": dict(SKETCH),
+     "findings": [{"severity": "advisory", "dimension": "耦合", "finding": "f"}]}
+r = run(m)
+check("T15 advisory findings 缺必填欄擋", r.returncode == 2 and "why_it_hurts_future" in r.stderr)
+
+m = {"verdict": "pass", "actor": dict(ADV_ACTOR), "summary": "x", "design_sketch": dict(SKETCH)}
+r = run(m)
+check("T16 advisory 回 7 枚舉 verdict 擋", r.returncode == 2 and "advisory verdict 非法" in r.stderr)
+
 print(f"TOTAL FAILURES: {fails}")
 shutil.rmtree(root, ignore_errors=True)
 sys.exit(1 if fails else 0)

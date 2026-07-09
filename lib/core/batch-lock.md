@@ -21,7 +21,9 @@
 ```yaml
 brief_id: 2026-05-06-slot-revenue-q2
 started_at: 2026-05-06T10:00:00
-phase: exploring                    # exploring | awaiting_approval | executing | reviewing | learning | on_hold
+phase: exploring                    # exploring | awaiting_approval | executing | reviewing | local_test | learning | on_hold
+                                    # reviewing = L0 holistic review（Step F）+ amendment 期（Step F'）
+                                    # local_test = control-plane.md Step F2 進行中（brief_stages.local_test，2026-07-09 補）
                                     # learning = control-plane.md Step G 進行中（learning loop）
                                     # on_hold = 升級使用者後使用者選 hold（escalation-rules.md §4.3）
 pid: 12345                          # 啟動 main session 的 pid（僅診斷）
@@ -54,10 +56,10 @@ autonomous_mandate: _mandate.json   # 選填；離場授權指針（內容在 br
 
 ### 2.2 寫入時機
 
-- 建立 brief（`/brief-new` 完成 brief.md 後）→ **先跑重疊機械閘** `python .framework/scripts/scope_check.py --overlap <預估 affected_repos 逗號串>`：非空交集（與 active brief 範圍或殘留 dirty 工作樹重疊；無 active brief 時只驗 dirty 殘留）→ 顯示給使用者確認後才建 _active.yaml（防平行/殘留互蓋）→ 建立 _active.yaml
-- 階段轉換（exploring → awaiting_approval / executing / reviewing / learning）→ 更新 `phase`
+- 建立 brief（`/brief-new` 完成 brief.md 後）→ **先跑重疊機械閘** `C:/Python312/python.exe .framework/scripts/scope_check.py --overlap <預估 affected_repos 逗號串>`：非空交集（與 active brief 範圍或殘留 dirty 工作樹重疊；無 active brief 時只驗 dirty 殘留）→ 顯示給使用者確認後才建 _active.yaml（防平行/殘留互蓋）→ 建立 _active.yaml
+- 階段轉換（exploring → awaiting_approval / executing / reviewing / local_test / learning）→ 更新 `phase`
 - 任何 main 動作（spawn role / 寫 verdict / 訪談題數變化）→ 更新 `last_heartbeat` + 對應欄位
-- 使用者離場授權 → 寫 `briefs/{id}/_mandate.json` + 跑 `python .framework/scripts/mandate_check.py .framework/briefs/{id}` 通過 → 本檔加 `autonomous_mandate: _mandate.json`；使用者回來確認後 mandate 標 consumed（指針保留供 trail）
+- 使用者離場授權 → 寫 `briefs/{id}/_mandate.json` + 跑 `C:/Python312/python.exe .framework/scripts/mandate_check.py .framework/briefs/{id}` 通過 → 本檔加 `autonomous_mandate: _mandate.json`；使用者回來確認後 mandate 標 consumed（指針保留供 trail）
 - Brief 完成 / 取消 → 刪除 _active.yaml
 
 ---

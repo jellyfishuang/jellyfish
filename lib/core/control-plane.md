@@ -86,7 +86,7 @@
 | Init: 寫 `.framework/memory/{MEMORY,architecture,preferences}.md` | `Write`（純新內容） |
 | Brief: 建 `.framework/briefs/{id}/brief.md`（從使用者描述） | `Write`（純新內容） |
 | Brief: 建 sub-brief plan.md（從 L0 plan 推導） | `Write`（推導內容） |
-| Brief: 寫 verdict.json | `Write` 由 **main** 做（subagent 在最後訊息 emit JSON，reviewer 無 Write 工具；main 收驗後**原樣落檔**至 §6.3 step 4 路徑，不改內容——此為記錄非創作，不違反「main 不寫 artifact」）。落檔為遙測資料源，歸檔前有機械完整性檢查（`telemetry_extract.py --check`） |
+| Brief: 寫 verdict.json | `Write` 由 **main** 做（subagent 在最後訊息 emit JSON，reviewer 無 Write 工具；main 收驗後**原樣落檔**至 §6.3 step 2 路徑，不改內容——此為記錄非創作，不違反「main 不寫 artifact」）。落檔為遙測資料源，歸檔前有機械完整性檢查（`telemetry_extract.py --check`） |
 | 學習迴圈：寫 `.framework/memory/lessons/{cat}.md`（append 一條） | `Edit`（append 至檔尾） |
 | 學習迴圈：寫 `.framework/memory/sessions/{id}.md`（新檔） | `Write`（純新內容） |
 | `/framework-role-add`：基於 framework template | `cp .framework/lib/roles/{template}.md` + `Edit` 客製 |
@@ -125,33 +125,52 @@ Step F. L0 holistic review（main 自做，**必跑、即使單 sub-brief / 即�
   - 檢查驗收條件、跨 sub-brief 一致性（若多）
   - **僅靜態驗證**：holistic review 是 main 讀檔 + 跨檔一致性判斷，**不跑實機**。
     plan 標 [runtime] 的驗收項（config / dispatch / 跨 service wiring 等整合行為）
-    框架流程**無法**確認——unit test 全綠 ≠ wire 已驗證（典型：config key 漏接 registration map，unit 過但 runtime panic）。
-  - 對所有 [runtime] 項，在完成摘要明列「需使用者端 localTest 驗證」清單，**不標成「已完成」**
+    本步不確認——unit test 全綠 ≠ wire 已驗證（典型：config key 漏接 registration map，unit 過但 runtime panic）。
+  - [runtime] 項交 Step F2 的 brief_stages.local_test 代驗（**2026-07-06 起代理化**；此前為「完成摘要
+    明列需使用者端 localTest 驗證、不標已完成」——現由 integration-tester 跑，使用者端 localTest 退為
+    ambiguity / 起不了 service 時的 fallback）
   - 寫 _tree.yaml.holistic_review = pass | fail
   - pass → Step F'（可選 amendment 期）；fail → 回 Explore（review-loop.md 第 3 輪以上規則）
   ↓
 Step F'. Amendment 期（**可選、由使用者觸發**）
   - holistic review pass 後，使用者可開 /brief-amend 對 sub-brief 做小範圍修訂
   - main 處於 idle，等使用者觸發指令
-  - 使用者直接進 Step G（無觸發） / 一次或多次 amendment 後再進 Step G
+  - 使用者直接進 Step F2（無觸發） / 一次或多次 amendment 後再進 Step F2
   - 完整規範見 core/amendment.md
+  - **視窗跨 F2 的補跑規則**：amendment 視窗延伸至 Step H 歸檔前（amendment.md §2.2）；若 F2
+    local_test 已 pass 後才 amend 且改動觸及 code → 該 local_test 結果失效，main 必提示並對受影響
+    的 [runtime] 項重跑 F2（可縮範圍只驗受影響 service），重跑 pass 才可進 Step H
+  ↓
+Step F2. brief_stages.local_test（整合確認；**依 pipeline.yaml brief_stages 配置**——new_feature 有；
+         bug_fix / planning_only 無此 stage、cancelled brief 一律略過）
+  - main spawn integration-tester（actor=agent），input：plan [runtime] 條目 + affected_repos + sub-brief artifacts
+  - agent 依 plan [runtime] 精確啟 service set（+ 依賴 + 必要 infra，不全啟）→ 對 endpoint 發 req
+    驗 response 對照預期（response 為主、log 為輔、不查 DB；outbound 臨時 patch 測完強制 revert）
+  - verdict 處理：
+    pass → 寫 _tree.yaml.nodes.{root}.brief_stages.local_test（state=pass；schema 見 e2r-tree.md §2.2）→ Step G
+    partial → 顯示 failed_evidence → 問使用者（打回 planner / engineer / skip / cancel）
+    ambiguity / needs_dependency → 使用者介入（補資訊 / 起 service / 補 plan）後 re-spawn
+  - 完整操作規則見專案 CLAUDE.md「Brief 結束強制清單」step 2 + pipeline.yaml brief_stages.local_test
   ↓
 Step G. 學習迴圈（見 learning-loop.md，**必跑、即使 verdict 全 pass**）
   - Step 1 必寫 sessions（即使無 suggest_* / 無評分）
   - Step 2-5 可視情況跳（learning-loop §3.1 規則）
   ↓
-Step H. 歸檔
-  - .framework/briefs/{brief_id}/ 移至 .framework/briefs/_archive/{year-month}/{brief_id}/
-    （**注意 year-month 子層**，例 .framework/briefs/_archive/2026-05/2026-05-06-x/）
-  - .framework/memory/sessions/{brief_id}.md 已在 Step G 寫好
+Step H. 歸檔（**2026-07-06 腳本化**）
+  - `python .framework/scripts/brief_close.py {brief_id}`：
+    串 tree_check → verdict_check → session_check → telemetry_extract → mandate 未收回擋
+    → mv briefs/{brief_id}/ → _archive/{year-month}/{brief_id}/（**注意 year-month 子層**）
+    → 驗 _active.yaml brief_id 相符後刪
+  - exit 2 → 顯示未過清單、修正後重跑；使用者明示 skip 才可 --force（記 trail）
+  - .framework/memory/sessions/{brief_id}.md 已在 Step G 寫好（session_check 驗 learning-loop §4 格式）
   ↓
 Step I. 解鎖
-  - 刪 _active.yaml
+  - _active.yaml 已由 brief_close.py 清除；腳本半途中斷殘留時，依腳本輸出指引處理後重跑
   - 回覆使用者完成
 ```
 
 **brief 生命週期鐵律**：
-- Step F、G、H、I **皆不可省**。即使 brief 流程順利、verdict 全 pass、使用者都點 yes，仍必經此四步。
+- Step F、F2、G、H、I **皆不可省**（F2 依 pipeline.yaml brief_stages——無該 stage 的 pipeline 自然略過）。即使 brief 流程順利、verdict 全 pass、使用者都點 yes，仍必經此序。
 - 跳過 Step G Step 1（寫 sessions）→ 下次 brief 的 Explore Step 2 找不到歷史，學習迴圈失效
 - 跳過 Step H 的 year-month 子層 → 歸檔目錄將被未分類 brief 塞滿，後續難找
 - 中斷恢復：使用者 Ctrl-C 後 `_active.yaml` 還在 → 重新啟動 main → 偵測到 active brief → 提示使用者執行 `/framework-recover`。詳見 `core/batch-lock.md`。
@@ -248,9 +267,15 @@ Step I. 解鎖
    spawn planning-reviewer，傳：plan-draft.md + 相關 lessons + architecture.md
    等回 verdict
 2. verdict pass → **main 定稿前 path-lint 機械閘門（見 §8.7）**：對 plan-draft 內每個 `<repo>/<path>` 引用逐一 `Glob` 抽驗（存在 + repo 前綴）+ reviewer verdict 列的可機械驗 claim（數量 / 路徑 / 行號）main 自 grep 抽驗不盲轉。通過 → mv plan-draft.md → plan.md；發現引用錯 → 回 planner 修（屬定稿前清理，不計 reviewer round）
-3. verdict fail → 把 reviewer 意見回給 planner（第 2 輪）
-4. 第 3 輪起若仍 fail → 視為 plan 本身有問題 → 回 Explore Step 3 補訪談
-5. 若 roster 無 planning-reviewer → 跳過此 step（plan-draft.md → plan.md）
+3. plan 定稿後、使用者批准前：若 roster 有 architecture-reviewer 且 pipeline planning stage 配
+   architecture_review（focus: plan_design）→ spawn architecture-reviewer 審 plan 架構決策
+   （advisory 議案制，處理見 §5.3.1；blocker 級 finding 交使用者仲裁，不計 reviewer 輪數）
+4. verdict fail → 把 reviewer 意見回給 planner（第 2 輪）
+5. 第 3 輪起若仍 fail → 視為 plan 本身有問題 → 回 Explore Step 3 補訪談
+6. 若 roster 無 planning-reviewer → 跳過 step 1（免 reviewer 審），但 **path-lint 照跑**（§8.7 定位為
+   main 無條件的定稿前自驗閘，不依賴 reviewer）→ 通過才 mv plan-draft.md → plan.md；step 3 的
+   architecture-reviewer plan_design 亦不依賴 planning-reviewer（pipeline 的 `runs_after: reviewer`
+   僅定相對順序，reviewer 缺席時於 plan 定稿後即跑）
 ```
 
 ### Step 6. 使用者批准
@@ -300,6 +325,13 @@ loop until all sub-briefs in terminal states (done | failed | cancelled):
   若 sub-brief 內所有 stage 完成 → sub.state = done
 ```
 
+**Per-sub-brief 就地審（2026-06-05 制度）**：有 code 開發的 sub-brief，stage 序固定為
+`engineering → code-reviewer → architecture-reviewer（implementation_design）→ unit_test（plan 可 skip）→ user_code_review（actor=user）`，
+全過該 sub-brief 才 state=done；多 sub-brief 並行時逐一就地審，**不集中到 brief 層**（2026-06-05 前
+user_code_review / unit_test 在 brief 層，已遷移）。收尾動作：
+- user_code_review 收 stage 時 main 必寫 `sub-briefs/{x}/reviews/user_review.json`（零 findings 也要寫——遙測分母）
+- sub-brief done 時對每個 affected repo 跑 `python .framework/scripts/patch_dump.py SGC_<X> .../artifacts/SGC_<X>.patch`（工作成果快照）
+
 ### 5.3 Verdict 處理（每個 sub-brief 內）
 
 ```
@@ -341,7 +373,7 @@ architecture-reviewer 回 advisory verdict（`clean | findings`，非 pass/fail�
 
 ```
 若 該 sub-brief 的 arch-review 被 skip（plan 標 skip / 改動 < skip_below_lines / 純 config·yaml）:
-    → 不出架構速覽，照常推進
+    → 不出架構速覽，照常推進                       # 「skip 不出」
 否則:
     取 verdict.design_sketch（architecture-reviewer 必附；見其 role md §6.1）
     原樣貼給使用者（≤30 行）
@@ -353,7 +385,7 @@ architecture-reviewer 回 advisory verdict（`clean | findings`，非 pass/fail�
 blocker 級 finding 仍照原規則交使用者仲裁（與速覽 ack 獨立並行）
 ```
 
-**設計理由**：advisory finding 清單會埋掉「形狀」問題（典型：新增與既有功能重疊的元件而未復用，被歸 advisory 默默記錄，到使用者目視 / amendment 才發現、回頭收斂）。速覽用結構化的「復用/新增 + 偏離 pattern」欄位把形狀頂到使用者眼前，在 code 落地後（implementation_design）或 plan 定案前（plan_design）即時攔。
+**設計理由**：advisory finding 清單會埋掉「形狀」問題（典型：新增與既有功能重疊的元件而未復用，被歸 advisory 默默記錄）。速覽用結構化的「復用/新增 + 偏離 pattern」欄位把形狀頂到使用者眼前，在 code 落地後（implementation_design）或 plan 定案前（plan_design）即時攔，避免拖到目視 / amendment 才發現（見 brief `2026-06-11-hot-lobby-api` ADV-3：兩 GameLoginClient 未復用，目視才抓、回頭走 amendment 收斂）。
 
 **Adversarial pass 的 spawn prompt 約定**（second_review=true 時）：
 
@@ -435,7 +467,7 @@ Amendment 是 L0 holistic review pass 後、Step G 學習迴圈前的可選輕�
 
 ## 5.6 User-away Mandate（離場授權，2026-07-06 結構化）
 
-使用者離場前授權 main 自主續跑時，**必寫結構化 mandate，禁用散文**（散文接手要靠讀 prose 理解邊界，部署實例的教訓）。
+使用者離場前授權 main 自主續跑時，**必寫結構化 mandate，禁用散文**（散文接手要靠讀 prose 理解邊界，2026-07-02 bigwin 實例的教訓）。
 
 ### 5.6.1 載體與流程
 
@@ -454,8 +486,8 @@ Amendment 是 L0 holistic review pass 後、Step G 學習迴圈前的可選輕�
 
 ```json
 {
-  "brief_id": "<brief_id>",
-  "granted_at": "<ISO ts>",
+  "brief_id": "2026-07-02-bigwin-multiplier-bq",
+  "granted_at": "2026-07-02T18:10:00+08:00",
   "status": "active",
   "auto_advance": {
     "sub_briefs": ["b", "d"],
@@ -546,11 +578,11 @@ model 唯一來源＝role 檔 frontmatter `model:` 欄。
 ```
 1. 從 subagent 最後訊息抓 ```json``` 區塊
 2. 寫 verdict 到 .framework/briefs/{root}/sub-briefs/{sub}/stages/{stage}/reviews/{role}.verdict.json
-   （brief 層 stage——planning-reviewer / architecture-reviewer plan_design / L0——寫 .framework/briefs/{root}/reviews/{role}.verdict.json；
+   （brief 層 stage——planning-reviewer / architecture-reviewer plan_design / L0 / local_test 的 integration-tester——寫 .framework/briefs/{root}/reviews/{role}.verdict.json；
     多輪同 role 檔名加 .round{N}；此落檔為 gate 遙測資料源，缺檔會被歸檔前機械檢查擋下）
 3. 機械驗 schema：python .framework/scripts/verdict_check.py <剛落檔的 verdict 路徑>
    （2026-07-06 起取代 LLM 目測；規則＝typed-interfaces §2-3 全量：7 枚舉 / actor 組合表 / 條件必填。
-    部署實例實證：僅有的 2 個留檔 brief 驗出 8 條違規——目測從未真正把關）
+    歷史實證：僅有的 2 個留檔 brief 驗出 8 條違規——目測從未真正把關）
 4. exit 2 → retry 同 role 1 次（給修正機會）→ 仍違規 → 視為 tool_error
 5. 收 suggest_* 欄位累積進 .framework/briefs/{root}/_suggestions.json
 6. 更新 _manifest.md（人類可讀進度）
