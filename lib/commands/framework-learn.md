@@ -87,26 +87,29 @@ Framework 的鐵律「main 不直寫 memory」常被誤讀為「需要 planner a
 
     (y) 寫入  (edit) 修改文字  (n) 取消」
 3. 使用者答 y → main append（依 learning-loop §8.1 schema）
-4. Frontmatter source_brief 欄位：寫 'ad-hoc' 或使用者指定的 brief_id
+4. Source 欄位：寫 'ad-hoc' 或使用者指定的 brief_id
 ```
 
 `--interactive` 模式：對話式收集 text / category / 引用 brief（若有）等資訊。
 
 ## ad-hoc 條目格式（依 learning-loop.md §8.1 schema）
 
-寫入時 append 至 `lessons/{cat}.md` 檔尾為 inline bullet（**不**在檔內加新 frontmatter——整檔僅一個檔級 frontmatter）：
+寫入時 append 至 `lessons/{cat}.md` 檔尾為 `## L{N}:` section（L 編號 = 檔內既有最大 L + 1，永不重編）：
 
+```markdown
+## L{N}: {一句標題}
+
+**Source**: ad-hoc（{date}） 或 brief `{brief_id}`
+**Status**: confirmed by user（{date}）
+**Reference count**: 0
+**Added via**: framework-learn-add-lesson
+
+### 教訓
+
+{body}
 ```
-- [{date}] [id:lesson-{date}-{seq}] {body}
-  - source_brief: ad-hoc 或 ad-hoc-{date}
-  - last_referenced: {date}
-  - reference_count: 0
-  - added_via: framework-learn-add-lesson
-```
 
-並更新檔級 frontmatter 的 `last_updated` / `entry_count`。
-
-`added_via` 欄位（擴展，不在 §8.1 必備 inline metadata）讓後續審視 memory 時可區分「brief learning loop 提議」vs「ad-hoc 直接加」。
+`Added via` 欄位（擴展，不在 §8.1 必備欄位）讓後續審視 memory 時可區分「brief learning loop 提議」vs「ad-hoc 直接加」。
 
 ## 異常處理
 

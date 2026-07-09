@@ -229,43 +229,46 @@ Brief 進行中各 verdict 的 `suggest_*` 欄位都已彙整在 `.framework/bri
 
 ### 8.1 寫 lessons
 
-**檔案結構**：每 category 一檔（`lessons/{category}.md`）。**整檔一個 frontmatter**（追蹤檔級 metadata），body 為 bullet list（每條 lesson 一個 bullet，附 inline metadata）。
+**檔案結構**：每 category 一檔（`lessons/{category}.md`）。**無 frontmatter**；每條 lesson 一個 `## L{N}:` section（**L 編號單調遞增、永不重編**——全 repo 交叉引用靠 `lessons/{cat}.md L{N}` 定位）。
 
 ```
 1. 開啟 .framework/memory/lessons/{category}.md
-2. 若檔不存在 → 建檔，寫初始 frontmatter：
-   ```yaml
+2. 若檔不存在 → 建檔：
+   ```markdown
+   # Lessons — {category}
+
+   > {一句：誰在哪個階段參考本檔}
+
    ---
-   category: {cat}
-   created_at: {ISO}
-   last_updated: {ISO}
-   entry_count: 0
-   ---
-   # Lessons: {cat}
    ```
-3. 檢查現有條目數，若 ≥ 30：
+3. 檢查現有 `## L` section 數，若 ≥ 30：
    - 提示使用者：「lessons/{category}.md 已 30 條（上限）。要淘汰最久未引用的嗎？」
-   - 同意 → 找 reference_count 最低 + last_referenced 最早 → 移至 lessons/escalations/（封存）
-4. Append 新 bullet 至檔尾（不重寫 frontmatter，僅更新 last_updated / entry_count）：
+   - 同意 → 找 Reference count 最低 + Last referenced 最早 → 移至 lessons/escalations/（封存；原 L 編號留空不重用）
+4. Append 新 section 至檔尾（L 編號 = 檔內既有最大 L + 1）：
+   ```markdown
+   ## L{N}: {一句標題}
+
+   **Source**: brief `{brief_id}`（{stage / 場景}，{date}）
+   **Status**: confirmed by user（{date}） | pending
+   **Reference count**: 0
+
+   ### 教訓
+
+   {body；直接寫結論，不寫敘述/決策歷史}
    ```
-   - [{date}] [id:lesson-{date}-{seq}] {body}
-     - source_brief: {brief_id}
-     - last_referenced: {date}
-     - reference_count: 0
-     - 詳見：escalations/{file}.md（若有）
-   ```
+   選填：**Last referenced**: {date}（被引用時更新，同步 +1 Reference count）；`詳見：escalations/{file}.md`（若有）。
 5. 同 lesson 重複觸發 ≥ 3 次 → main 提議升級為 preferences.md 硬規則
 ```
 
-**為何不用「每條 frontmatter」**：yaml + markdown 慣例下單檔多 frontmatter 不合法；inline bullet metadata 既可被 grep 也可被 SLIDERS 後期 import 工具掃進 SQLite（每行一個 entry）。
+**格式沿革**：v0.x 曾規範「檔級 frontmatter + inline bullet」（利 grep / SQLite 匯入）；2026-07-09 定案改 section 式——實務 6:1 檔數傾向 section 式，且全 repo 交叉引用（CLAUDE.md / verdict / session 摘要）都用 `L{N}` 定位。舊 bullet 式的 `[id:lesson-{date}-{seq}]` 已轉檔者於 section 內保留原 id 供歷史引用回溯。
 
 ### 8.2 寫 patterns
 
 ```
 1. .framework/memory/patterns/{category}.md
-2. 上限 30 條（同 lessons 規則）
-3. 條目 ≤ 3 行
-4. Frontmatter 同 lessons
+2. 格式同 lessons（§8.1），差異：標題 `# Patterns — {category}`、section 用 `## P{N}:`
+3. 上限 30 條（同 lessons 規則）
+4. 教訓 body 精簡（pattern 一段講清判準 + 做法，勿長文）
 ```
 
 ### 8.3 寫 codex
