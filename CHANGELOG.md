@@ -3,6 +3,14 @@
 記錄 framework lib（`D:\Claude\.framework\lib`）的版本演變。版號採 SemVer，對應日後的 git tag。
 版號真實來源＝`lib/VERSION`；各 repo 複製時以該檔為準。
 
+## 0.14.1 — 2026-07-14
+
+session_check 補 draft+redline 遙測鍵驗證。動因：部署實例（SGC）draft+redline 試跑（v0.10.0）首個上線後樣本（2026-07-08-popular-device-split）收尾漏記 `draft_cycles`/`fork_count`——REQUIRED_KEYS 未含這兩鍵，機械閘沒攔，依 runbook「漏記＝樣本作廢」險廢一樣本（後自歸檔 clarifications.md 訪談總計回填救回）。「靠 prompt 自律必漏」再一例。patch bump。
+
+- **`lib/scripts/session_check.py`**：REQUIRED_KEYS 補 `draft_cycles` / `fork_count`（learning-loop §4 模板 2026-07-06 起兩鍵即在，閘漏跟）；值另驗 null 或非負整數（逐題 fallback / 不適用填 null）。2026-07-06 前歷史 sessions 不回溯（重跑舊歸檔會 fail 屬預期）
+- **`lib/scripts/session_check_tests.py`**：測試 10→13（缺鍵擋 / null 過 / 值非法擋）
+- 設計來源：SGC 部署實例 2026-07-14（draft-redline-trial runbook 觀察節同日記錄）
+
 ## 0.14.0 — 2026-07-09
 
 收斂稽核修正批 + lessons 格式定案。動因：SGC 部署實例對框架跑四路收斂稽核（部署漂移 / 流程一致 / schema 對齊 / 交叉引用）+ 對抗式驗證（反駁審查 + 模擬測試），驗出規範文件層系統性欠帳——control-plane 未跟上 2026-06-05（per-sub-brief 就地審）與 2026-07-06（local_test 代驗制 / 收尾腳本化）兩次制度變更、typed-interfaces 缺整套 advisory schema（真契約只活在 verdict_check.py 與 role md）、brief_stages state enum 只活在 tree_check hardcode——外加兩個實撞 bug（歸檔 WinError 32 殭屍鎖、L0 verdict 掃描盲區）。minor bump。

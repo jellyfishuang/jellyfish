@@ -7,7 +7,8 @@
 檢查:
   檔案存在: .framework/memory/sessions/{brief_id}.md (brief_dir 模式由目錄名推 brief_id)
   YAML frontmatter: 首行 `---` + 收尾 `---`
-  必填鍵: id / created_at / brief_started_at / brief_completed_at / duration / recipe / roster / state / sub_briefs / archived_to
+  必填鍵: id / created_at / brief_started_at / brief_completed_at / duration / recipe / roster / state / sub_briefs / archived_to / draft_cycles / fork_count
+  draft_cycles / fork_count 值限 null 或非負整數 (draft+redline 遙測, learning-loop.md §4; 逐題模式填 null; 2026-07-06 前歷史檔不回溯)
   id 必等於 brief_id (檔名 stem)
   state ∈ {done, failed, cancelled}
   必要 section (state=cancelled 免): ## 摘要 / ## 關鍵時間軸 / ## 產出
@@ -21,7 +22,9 @@ if hasattr(sys.stdout, "reconfigure"):
     sys.stderr.reconfigure(encoding="utf-8", errors="replace")
 
 REQUIRED_KEYS = ("id", "created_at", "brief_started_at", "brief_completed_at",
-                 "duration", "recipe", "roster", "state", "sub_briefs", "archived_to")
+                 "duration", "recipe", "roster", "state", "sub_briefs", "archived_to",
+                 "draft_cycles", "fork_count")
+NULL_OR_INT_KEYS = ("draft_cycles", "fork_count")  # draft+redline 遙測; 漏記=樣本作廢, 故鍵必在
 STATES = {"done", "failed", "cancelled"}
 REQUIRED_SECTIONS = ("## 摘要", "## 關鍵時間軸", "## 產出")
 
@@ -73,6 +76,11 @@ def main():
     for k in REQUIRED_KEYS:
         if k not in fm:
             errs.append(f"frontmatter 缺必填鍵: {k}")
+
+    for k in NULL_OR_INT_KEYS:
+        v = fm.get(k)
+        if v is not None and v != "null" and not v.isdigit():
+            errs.append(f"{k} 值非法 '{v}' (允許 null 或非負整數)")
 
     state = fm.get("state", "")
     if state and state not in STATES:

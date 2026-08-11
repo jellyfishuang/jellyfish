@@ -39,6 +39,8 @@ roster: [planner, engineer]
 state: done
 sub_briefs: [a]
 clarification_rounds_used: 3
+draft_cycles: 2   # 紅筆輪數
+fork_count: 3
 archived_to: ./_archive/2026-01/2026-01-01-x/
 ---
 
@@ -99,6 +101,15 @@ os.makedirs(adir)
 r = subprocess.run([PY, CHECK, adir], capture_output=True, text=True,
                    encoding="utf-8", errors="replace", env=ENV)
 check("T10 archive 路徑模式過", r.returncode == 0 and "SESSION OK" in r.stdout, r.stdout + r.stderr)
+
+r = run_file(GOOD.replace("draft_cycles: 2   # 紅筆輪數\n", ""))
+check("T11 缺 draft_cycles 擋", r.returncode == 2 and "draft_cycles" in r.stderr)
+
+r = run_file(GOOD.replace("draft_cycles: 2   # 紅筆輪數", "draft_cycles: null"))
+check("T12 draft_cycles null 過 (逐題模式)", r.returncode == 0, r.stdout + r.stderr)
+
+r = run_file(GOOD.replace("fork_count: 3", "fork_count: three"))
+check("T13 fork_count 值非法擋", r.returncode == 2 and "fork_count" in r.stderr)
 
 print(f"TOTAL FAILURES: {fails}")
 shutil.rmtree(root, ignore_errors=True)
