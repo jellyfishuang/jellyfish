@@ -1,9 +1,12 @@
 #!/usr/bin/env python3
-"""Gate scripts 回歸測試 (62 case, 含三輪對抗式驗證回饋案例)。
-測試對象 = 本檔同目錄的 bash_gate.py / path_gate.py / fullwidth_gate.py。
+"""Gate scripts 回歸測試 (84 case, 含三輪對抗式驗證回饋案例 + mandate ask 升級 deny)。
+測試對象 = 本檔同目錄的 bash_gate.py / path_gate.py / fullwidth_gate.py (+ gate_mandate.py)。
+case 以 GATE_BRIEFS_DIR 注入 briefs fixture 與真實 repo 隔離; DEFAULT_PATH/NOMOD 哨兵改跑
+fakeroot 副本 (不設環境變數), 驗 __file__ 相對預設路徑與 import 失敗回退。
 用法: python run_tests.py  (期望輸出 FAILURES: 0)"""
 import json
 import os
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -30,6 +33,49 @@ BAD_GO = os.path.join(FIX, "bad.go").replace("\\", "/")
 CLEAN_GO = os.path.join(FIX, "clean.go").replace("\\", "/")
 APOS_GO = os.path.join(FIX, "apos.go").replace("\\", "/")
 NON_GO = os.path.abspath(__file__).replace("\\", "/")
+
+
+def _briefs(name, active_yaml, mandate_json):
+    root = os.path.join(FIX, name)
+    os.makedirs(os.path.join(root, "test-brief"))
+    if active_yaml is not None:
+        with open(os.path.join(root, "_active.yaml"), "w", encoding="utf-8") as f:
+            f.write(active_yaml)
+    if mandate_json is not None:
+        with open(os.path.join(root, "test-brief", "_mandate.json"), "w", encoding="utf-8") as f:
+            f.write(mandate_json)
+    return root
+
+
+ACTIVE_YAML = "brief_id: test-brief" + NL + "phase: executing" + NL + "autonomous_mandate: _mandate.json" + NL
+BRIEFS_NONE = os.path.join(FIX, "briefs_none")  # 無 _active.yaml -> mandate off (預設 fixture)
+os.makedirs(BRIEFS_NONE)
+BRIEFS_ACTIVE = _briefs("briefs_active", ACTIVE_YAML, '{"status": "active"}')
+BRIEFS_CONSUMED = _briefs("briefs_consumed", ACTIVE_YAML, '{"status": "consumed"}')
+BRIEFS_BROKEN = _briefs("briefs_broken", ACTIVE_YAML, '{status: active')
+BRIEFS_NOPTR = _briefs("briefs_noptr", "brief_id: test-brief" + NL + "phase: executing" + NL, '{"status": "active"}')
+BRIEFS_QUOTED = _briefs("briefs_quoted",
+                        "brief_id: 'test-brief'" + NL + 'autonomous_mandate: "_mandate.json"  # 指針' + NL,
+                        '{"status": "active"}')
+BRIEFS_BOM_YAML = _briefs("briefs_bom_yaml", "\ufeff" + ACTIVE_YAML, '{"status": "active"}')
+BRIEFS_BOM_JSON = _briefs("briefs_bom_json", ACTIVE_YAML, "\ufeff" + '{"status": "active"}')
+
+# fakeroot: hooks/ 與 briefs/ 兄弟目錄, 不設 GATE_BRIEFS_DIR, 驗 __file__ 相對預設路徑 (../briefs)
+DEFAULT_PATH = "__default__"      # 哨兵: 跑 FAKEHOOKS 副本
+DEFAULT_NOMOD = "__default_nomod__"  # 哨兵: 跑無 gate_mandate.py 的副本, 驗 import 失敗回退 ask
+FAKEHOOKS = os.path.join(FIX, "fakeroot", "hooks")
+FAKEHOOKS_NOMOD = os.path.join(FIX, "fakeroot_nomod", "hooks")
+for root, files in ((FAKEHOOKS, ("bash_gate.py", "path_gate.py", "gate_mandate.py")),
+                    (FAKEHOOKS_NOMOD, ("bash_gate.py",))):
+    os.makedirs(root)
+    for fn in files:
+        shutil.copy(os.path.join(HERE, fn), root)
+    briefs = os.path.join(os.path.dirname(root), "briefs")
+    os.makedirs(os.path.join(briefs, "test-brief"))
+    with open(os.path.join(briefs, "_active.yaml"), "w", encoding="utf-8") as f:
+        f.write(ACTIVE_YAML)
+    with open(os.path.join(briefs, "test-brief", "_mandate.json"), "w", encoding="utf-8") as f:
+        f.write('{"status": "active"}')
 
 cases = [
     # --- bash_gate 基本 ---
@@ -99,6 +145,30 @@ cases = [
     ("fullwidth_gate", {"tool_input": {"file_path": FIX.replace("\\", "/") + "/nonexistent.go"}}, "pass"),
     ("fullwidth_gate", {"tool_input": {"file_path": NON_GO}}, "pass"),
     ("fullwidth_gate", {"tool_input": {"file_path": "D:/Proj/Root/Repo_Y/vendor/a.go"}}, "pass"),
+    # --- mandate active: ask 升級 deny (gate_mandate) ---
+    ("bash_gate", {"tool_input": {"command": 'git -C SGC_X commit -m "x"'}}, "deny", BRIEFS_ACTIVE),
+    ("bash_gate", {"tool_input": {"command": "git push origin main"}}, "deny", BRIEFS_ACTIVE),
+    ("bash_gate", {"tool_input": {"command": "docker compose down"}}, "deny", BRIEFS_ACTIVE),
+    ("bash_gate", {"tool_input": {"command": "docker compose down -v"}}, "deny", BRIEFS_ACTIVE),
+    ("bash_gate", {"tool_input": {"command": "docker stop sgc-mongo"}}, "pass", BRIEFS_ACTIVE),
+    ("bash_gate", {"tool_input": {"command": "git status && git log --oneline"}}, "pass", BRIEFS_ACTIVE),
+    ("path_gate", {"tool_input": {"file_path": "D:/Proj/Root/.framework/memory/lessons/x.md"}}, "deny", BRIEFS_ACTIVE),
+    ("path_gate", {"tool_input": {"file_path": "D:/Proj/Root/.claude/skills/foo/SKILL.md"}}, "deny", BRIEFS_ACTIVE),
+    ("path_gate", {"tool_input": {"file_path": "D:/Proj/Root/.framework/memory/sessions/t.md"}}, "pass", BRIEFS_ACTIVE),
+    ("path_gate", {"tool_input": {"file_path": "D:/Proj/Root/Repo_X/main.go"}}, "pass", BRIEFS_ACTIVE),
+    ("bash_gate", {"tool_input": {"command": "git commit -m x"}}, "deny", BRIEFS_QUOTED),
+    ("bash_gate", {"tool_input": {"command": "git commit -m x"}}, "deny", BRIEFS_BOM_YAML),
+    ("bash_gate", {"tool_input": {"command": "git commit -m x"}}, "deny", BRIEFS_BOM_JSON),
+    ("path_gate", {"tool_input": {"file_path": "D:/Proj/Root/.framework/codex/engineer.md"}}, "deny", BRIEFS_ACTIVE),
+    ("bash_gate", {"tool_input": {"command": "git commit -m x"}}, "deny", DEFAULT_PATH),
+    ("path_gate", {"tool_input": {"file_path": "D:/Proj/Root/.framework/memory/lessons/x.md"}}, "deny", DEFAULT_PATH),
+    ("bash_gate", {"tool_input": {"command": "git commit -m x"}}, "ask", DEFAULT_NOMOD),
+    # --- mandate 非 active / 缺損: 回退 ask ---
+    ("bash_gate", {"tool_input": {"command": "git commit -m x"}}, "ask", BRIEFS_CONSUMED),
+    ("path_gate", {"tool_input": {"file_path": "D:/Proj/Root/.framework/memory/lessons/x.md"}}, "ask", BRIEFS_CONSUMED),
+    ("bash_gate", {"tool_input": {"command": "git commit -m x"}}, "ask", BRIEFS_BROKEN),
+    ("bash_gate", {"tool_input": {"command": "git commit -m x"}}, "ask", BRIEFS_NOPTR),
+    ("bash_gate", {"tool_input": {"command": "git commit -m x"}}, "ask", os.path.join(FIX, "briefs_missing")),
 ]
 
 
@@ -113,9 +183,20 @@ def classify(rc, out):
 
 
 fails = 0
-for script, payload, want in cases:
-    r = subprocess.run([PY, os.path.join(HERE, script + ".py")],
-                       input=json.dumps(payload).encode("utf-8"), capture_output=True)
+for case in cases:
+    script, payload, want = case[0], case[1], case[2]
+    briefs = case[3] if len(case) > 3 else BRIEFS_NONE
+    env = dict(os.environ)
+    env.pop("GATE_BRIEFS_DIR", None)
+    if briefs == DEFAULT_PATH:
+        script_path = os.path.join(FAKEHOOKS, script + ".py")
+    elif briefs == DEFAULT_NOMOD:
+        script_path = os.path.join(FAKEHOOKS_NOMOD, script + ".py")
+    else:
+        script_path = os.path.join(HERE, script + ".py")
+        env["GATE_BRIEFS_DIR"] = briefs
+    r = subprocess.run([PY, script_path],
+                       input=json.dumps(payload).encode("utf-8"), capture_output=True, env=env)
     got = classify(r.returncode, r.stdout.decode("utf-8", "replace"))
     ok = got == want
     fails += 0 if ok else 1

@@ -3,6 +3,19 @@
 記錄 framework lib（`D:\Claude\.framework\lib`）的版本演變。版號採 SemVer，對應日後的 git tag。
 版號真實來源＝`lib/VERSION`；各 repo 複製時以該檔為準。
 
+## 0.15.0 — 2026-08-11
+
+機械閘 mandate-aware：離場授權（control-plane §5.6）期間 ask 升級 deny。動因：mandate 生效中 bash_gate / path_gate 對 git commit/push、compose down、memory/codex/skills 寫入回 ask，無人在場按彈窗整條線 hang——語意錯配：永不可預授權的動作（§5.6.3）不該問不在場的人。deny 的 stderr 指路讓 agent 換路續跑。permission mode 端治不了（hook ask 與 mode 分層；auto 模式下是否仍彈窗官方文件未載明——正是把語意寫死在 gate 裡的理由）。minor bump。
+
+- **`lib/hooks/gate_mandate.py`**（新增）：mandate 判定共用模組——`briefs/_active.yaml` 的 `brief_id` + `autonomous_mandate` 指針 → `_mandate.json.status == "active"`。stdlib-only、`__file__` 相對定位（不依賴 cwd）、`GATE_BRIEFS_DIR` 測試注入；**呼叫契約不得 raise**；任何讀取/解析失敗回 False（gate 回退 ask，絕不 deny 絕不放行）；`encoding="utf-8-sig"`——BOM 會使 `re.M` 行首錨定失效 → mandate 靜默失效退回 ask（對抗式審查實測）
+- **`lib/hooks/bash_gate.py`**：mandate active 時 git commit/push → deny（理由引 §5.6.3、導向 on_stop.report）；compose down → deny（理由「無人可確認」、導向 compose stop；刻意不引 §5.6.3——不在該清單）
+- **`lib/hooks/path_gate.py`**：mandate active 時 memory/codex/skills 寫入 → deny（導向 verdict.suggest_* 聚合 _suggestions.json）；`memory/sessions/` 例外照舊放行
+- 兩 gate 呼叫端 `_mandate_active()` try/except 兜底——`mandate_active()` 若 raise 會冒泡到 gate 的 fail-open 包裝，**連原本的 ask 防線一起跳過變 pass**（對抗式審查實測；跨檔隱含契約明文＋兜底雙保險）
+- **`lib/hooks/run_tests.py`**：62→84 case——mandate active / consumed / 壞 JSON / 無指針 / 缺檔 / BOM×2 / 引號+尾註解；fakeroot 哨兵驗 `__file__` 相對預設路徑與 import 失敗回退；case 以 `GATE_BRIEFS_DIR` 與真實 repo 隔離（哨兵除外，temp fakeroot 副本）——否則真實 mandate 狀態會翻轉測試結果
+- **control-plane §5.6.1 / §5.6.3**：離場流程 step 2 補「切 permission mode → auto」提醒、step 5 回場「標 consumed 與切回綁同一步」；§5.6.3 補機械閘 bullet
+- **`lib/commands/framework-hooks-sync.md`**：回歸 case 數改不寫死（數字權威＝run_tests.py docstring + hooks README）
+- 設計來源：SGC 部署實例 2026-08-07（三線方案審查：gate deny 主線 / 切 auto 輔線 / Remote Control 互補；對抗式 code review pass_with_findings，4 findings 全修；myvault ADR-035）
+
 ## 0.14.1 — 2026-07-14
 
 session_check 補 draft+redline 遙測鍵驗證。動因：部署實例（SGC）draft+redline 試跑（v0.10.0）首個上線後樣本（2026-07-08-popular-device-split）收尾漏記 `draft_cycles`/`fork_count`——REQUIRED_KEYS 未含這兩鍵，機械閘沒攔，依 runbook「漏記＝樣本作廢」險廢一樣本（後自歸檔 clarifications.md 訪談總計回填救回）。「靠 prompt 自律必漏」再一例。patch bump。

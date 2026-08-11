@@ -2,6 +2,7 @@
 """PreToolUse gate (matcher: Bash)
 docker rm/rmi/prune (子指令位置, 容許 flag+value)、compose down -v -> deny;
 compose down -> ask; git commit/push -> ask。
+mandate 生效中 (gate_mandate) ask 升級 deny: 永不可預授權的動作不對不在場的人彈窗 (§5.6.3), deny 讓 agent 換路續跑。
 比對前剝除 heredoc body/跳脫序列/引號內容, 換行視同指令分隔, docker-compose 正規化, 空白摺疊。
 內部錯誤一律 fail-open (exit 0) 並記 gate.log。"""
 import datetime
@@ -9,6 +10,19 @@ import json
 import os
 import re
 import sys
+
+try:
+    from gate_mandate import mandate_active
+except Exception:
+    def mandate_active():
+        return False
+
+
+def _mandate_active():
+    try:
+        return mandate_active()
+    except Exception:  # raise 會冒泡到 fail-open 包裝, 連 ask 防線一起跳過
+        return False
 
 LOG = os.path.join(os.path.dirname(os.path.abspath(__file__)), "gate.log")
 
@@ -82,10 +96,16 @@ def main():
         if RE_DOWN_VOLUMES.search(scrubbed):
             _log(f"deny compose-down-v: {_san(cmd)}")
             _deny("禁用 docker compose down -v: 會刪除 volume; 收尾用 docker compose stop")
+        if _mandate_active():
+            _log(f"deny compose-down (mandate): {_san(cmd)}")
+            _deny("mandate 生效中, 無人可確認 compose down: 收尾改用 docker compose stop; 確需 down 記入 on_stop.report 等使用者回場")
         _log(f"ask compose-down: {_san(cmd)}")
         _ask("docker compose down 會刪除容器, 收尾慣例是 stop; 確定要 down 才放行")
 
     if RE_GIT_COMMIT_PUSH.search(scrubbed):
+        if _mandate_active():
+            _log(f"deny git-commit-push (mandate): {_san(cmd)}")
+            _deny("mandate 生效中, git commit/push 永不可預授權 (control-plane §5.6.3): 記入 on_stop.report, 使用者回場親自處理")
         _log(f"ask git-commit-push: {_san(cmd)}")
         _ask("git commit/push 由使用者親自執行 (CLAUDE.md multi-repo 鐵律); 使用者已明確要求才放行")
 

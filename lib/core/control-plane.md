@@ -475,11 +475,14 @@ Amendment 是 L0 holistic review pass 後、Step G 學習迴圈前的可選輕�
 1. 使用者口頭授權 → main 轉譯為 .framework/briefs/{id}/_mandate.json（schema 見下）
 2. 寫完必跑驗證: python .framework/scripts/mandate_check.py .framework/briefs/{id}
    exit 2 → 修正後重跑; 驗證通過 → 把 MANDATE OK 摘要唸給使用者確認後才開始自主執行
+   （main 同時提醒使用者離鍵盤前手動切 permission mode → auto，降低非機械閘的一般權限彈窗；
+     機械閘守的動作在 mandate active 時直接 deny 不彈窗，見 §5.6.3）
 3. _active.yaml.autonomous_mandate 欄位只放指針值 "_mandate.json"（不放內容）
 4. 執行中: 只推進 auto_advance 白名單; 到人審關卡停（除非該關卡在 pre_authorized）;
    觸發 HOLD 條件 → 停該線、寫進 on_stop.report、不替使用者猜
 5. 使用者回來（親自接手或 /framework-recover）→ main 顯示 mandate 摘要 + 已推進狀態
-   → 使用者確認後標 status=consumed; 之後的動作回到正常互動模式
+   → 使用者確認後標 status=consumed（main 同步提醒切回原 permission mode——標 consumed 與切回
+     綁同一步，忘標會讓機械閘的 mandate deny 多留一陣）; 之後的動作回到正常互動模式
 ```
 
 ### 5.6.2 `_mandate.json` Schema
@@ -515,6 +518,7 @@ Amendment 是 L0 holistic review pass 後、Step G 學習迴圈前的可選輕�
 - 永不可預授權：git commit/push、`.framework/memory|codex/`、`.claude/skills/` 寫入、brief 歸檔、品質評分、brief cancel、pipeline/role 修改
 - `max_review_rounds` 只可低於 review-loop cap（4），不可高於
 - 人審 stage（user_code_review / plan_approval）不可進 `auto_advance.stages`——只能走 `pre_authorized` 逐項列舉（mandate_check 機械擋）
+- 機械閘（2026-08-07）：mandate `status == "active"` 期間，bash_gate / path_gate 對 git commit/push、compose down、memory/codex/skills 寫入回 **deny 而非 ask**——永不可預授權的動作不對不在場的人彈窗（彈了就 hang 整條線）；deny 理由導向 on_stop.report / suggest_*，agent 換路續跑。判定邏輯在 `lib/hooks/gate_mandate.py`
 
 ---
 

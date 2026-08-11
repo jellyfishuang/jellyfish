@@ -2,12 +2,26 @@
 """PreToolUse gate (matcher: Write|Edit|MultiEdit)
 守護路徑 (.framework/memory, .framework/codex, .claude/skills) 的寫入一律 ask:
 mid-execution 偷寫會被使用者看見並擋下; learning loop 合法寫入時, 權限提示本身即為批准點。
+mandate 生效中 (gate_mandate) ask 升級 deny: 這三路徑在 §5.6.3 永不可預授權清單, 無人在場批准點不成立。
 例外: .framework/memory/sessions/ (brief 結束清單規定強制寫、無批准門檻)。
 內部錯誤一律 fail-open (exit 0) 並記 gate.log。"""
 import datetime
 import json
 import os
 import sys
+
+try:
+    from gate_mandate import mandate_active
+except Exception:
+    def mandate_active():
+        return False
+
+
+def _mandate_active():
+    try:
+        return mandate_active()
+    except Exception:  # raise 會冒泡到 fail-open 包裝, 連 ask 防線一起跳過
+        return False
 
 LOG = os.path.join(os.path.dirname(os.path.abspath(__file__)), "gate.log")
 GUARDED = (".framework/memory/", ".framework/codex/", ".claude/skills/")
@@ -35,6 +49,11 @@ def main():
     if any(a in p for a in ALLOWED):
         return
     if any(g in p for g in GUARDED):
+        if _mandate_active():
+            _log(f"deny guarded-write (mandate): {p}")
+            print("mandate 生效中, memory/codex/skills 寫入永不可預授權 (control-plane §5.6.3): "
+                  "觀察改走 verdict.suggest_* 聚合到 _suggestions.json", file=sys.stderr)
+            sys.exit(2)
         _log(f"ask guarded-write: {p}")
         print(json.dumps({"hookSpecificOutput": {
             "hookEventName": "PreToolUse",

@@ -11,7 +11,7 @@ allowed-tools: Read, Bash
 ## 用法
 
 ```
-/framework-hooks-sync            # 部署 + 合併 settings + 跑 62-case 回歸
+/framework-hooks-sync            # 部署 + 合併 settings + 跑 gate 回歸（case 數見 lib/hooks/README.md）
 /framework-hooks-sync --dry      # 只顯示將發生的變更, 不寫任何檔
 /framework-hooks-sync --no-test  # 部署 + 合併, 跳過回歸（不建議, 除非趕時間）
 ```
