@@ -467,6 +467,7 @@ bash_extra_deny: []
 mkdir .framework/briefs/
 mkdir .framework/briefs/inbox/
 mkdir .framework/briefs/_archive/
+mkdir .framework/briefs/_active/     # lock registry（multi-lane，batch-lock.md §2）
 ```
 
 ### 2.12 建 worktrees/（若啟用）
@@ -500,7 +501,7 @@ This project uses a multi-agent framework. See [CLAUDE.md](CLAUDE.md) for detail
 .claude/settings.local.json         # 個人設定不進 git
 .framework/worktrees/                         # 若啟用
 .framework/briefs/_archive/                    # 歷史歸檔太大
-.framework/briefs/_active.yaml                 # 執行時狀態
+.framework/briefs/_active/                     # lock registry（執行時狀態）
 ```
 
 **不**進 .gitignore（這些進 git）：

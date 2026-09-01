@@ -65,7 +65,7 @@ worktree: forbidden
 ### Forbidden
 
 - 對 `{repo}/**` production code 的改動**不 revert**（測完強制 `git -C <repo> checkout --` 復原；未 revert → verdict 標 `revert_incomplete` warning）
-- 改 plan.md / brief.md / clarifications.md / sub-brief.md / _tree.yaml / _manifest.md / _active.yaml / _suggestions.json
+- 改 plan.md / brief.md / clarifications.md / sub-brief.md / _tree.yaml / _manifest.md / briefs/_active/ 內任何 lock / _suggestions.json
 - `.framework/lib/**`（framework 內部）
 - `.claude/agents/`、`.claude/skills/`、`.framework/codex/`、`.framework/memory/**`（不直寫）
 - 寫 unit test 檔

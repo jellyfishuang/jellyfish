@@ -62,7 +62,7 @@ amendment 層信任使用者作為 reviewer（§1.1）——小範圍修訂該�
 | 條件 | 檢查 |
 |---|---|
 | Framework 已 init | `.framework/.initialized` 存在 |
-| 有 active brief | `.framework/briefs/_active.yaml` 存在 |
+| 有 active brief | 目標 brief 的 lock `.framework/briefs/_active/{root}.yaml` 存在（多 lane 下 sub_id 以本 session 持有的 brief 解析，或用 `{root}.{sub_id}` 全稱指定） |
 | 指定 sub-brief 存在 | `.framework/briefs/{root}/sub-briefs/{sub_id}/` 存在 |
 | Sub-brief 已 done | `_tree.yaml.nodes.{sub_id}.state == done` |
 | Brief 尚未歸檔 | `.framework/briefs/{root}/` 仍在原位（未移至 `_archive/`）且控制面尚未進入 Step H |

@@ -38,7 +38,8 @@ Framework 落地在各 repo、各自維護 local `.framework/memory`；外部 KB
 4. 彙整回報給使用者（不改任何檔）：
    - 命中的 lessons / patterns / ADR，標來源 repo + 檔名 + 一句摘要
    - 找不到 → 「KB 內查無 <主題> 相關，建議換關鍵字或直接看 codebase」
-5. 若當前有 active brief（.framework/briefs/_active.yaml 存在且該 brief 有 intel-pack.md）：
+5. 若本 session 有正在處理的 brief（解析：本 session 的 brief → registry 唯一 lock → 多 lane 則問；
+   且該 brief 有 intel-pack.md）：
    - 把命中結果**唯讀引用**折進 intel-pack.md 的「## 跨 repo 參考」段（無則新建該段）
    - 標明來源（KB 路徑 + 檔名 + project），供後續 spawn planner 時循 §6.1 注入
    - 不複製進 .framework/memory（不是 ingest、是 reference）

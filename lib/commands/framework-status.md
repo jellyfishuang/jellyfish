@@ -26,7 +26,8 @@ allowed-tools: Read, Glob
 3. Glob .claude/agents/ 列 role
 4. Glob .claude/skills/ 列 skill
 5. Glob .framework/codex/ 列 codex
-6. Read .framework/briefs/_active.yaml（若存在）
+6. 掃 .framework/briefs/_active/*.yaml（每份 = 一條 lane；逐 lane 摘要 + 殭屍偵測 batch-lock §4.2；
+   偵測到 legacy 單檔 _active.yaml → 提示搬遷）
 7. 格式化顯示
 ```
 

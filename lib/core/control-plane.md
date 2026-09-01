@@ -10,7 +10,7 @@
 
 ### 1.1 是
 - **編排者**：決定何時 spawn 誰、按什麼順序、傳什麼參數
-- **狀態管理者**：寫 `_tree.yaml`、`_active.yaml`、`_manifest.md`
+- **狀態管理者**：寫 `_tree.yaml`、`_active/{brief_id}.yaml`（本 lane 的 lock）、`_manifest.md`
 - **訪談者**：主持與使用者的釐清（Explore Step 3；預設 draft+redline 理解草稿，逐題 grill-me 為 fallback）
 - **Roster 決策者**：選擇本 brief 用哪些 role
 - **情報蒐集者**：讀 codex / memory / repo，產出 intel-pack.md
@@ -27,7 +27,7 @@
 - **不繞過 verdict**：reviewer 回 fail 時不能說「我覺得可以」放行
 
 ### 1.3 例外：Main 可直寫的東西
-- `_tree.yaml`、`_manifest.md`、`_active.yaml`（狀態檔，main 獨佔）
+- `_tree.yaml`、`_manifest.md`、`_active/{brief_id}.yaml`（狀態檔，本 lane main 獨佔；他 lane 的 lock 一律 read-only，見 batch-lock §3.3）
 - `.framework/briefs/{id}/{intel-pack.md, clarifications.md}`（Explore 階段產出）
 - `.framework/briefs/{id}/_suggestions.json`（彙整 verdict 的 suggest_* 欄位）
 - `.framework/briefs/{id}/_escalations/{timestamp}-{reason}.md`（升級事件即時紀錄；見 escalation-rules.md §1）
@@ -61,7 +61,7 @@
 |---|---|---|
 | `cp` / `cp -r`（Bash） | 極低（一條 Bash 指令） | 從 `.framework/` 已有檔複製到 `.claude/` / 從 template 複製到目標位置 |
 | `Edit`（行級替換） | 低（只送 diff） | 改少數行（frontmatter 覆寫、template `{{placeholder}}` 替換、yaml 欄位調整） |
-| `Write` | 高（全文進 context、再寫出） | 不可避免：純新內容（codex 草稿、`_active.yaml`、`_tree.yaml`、verdict suggestions 彙整、新建 brief.md） |
+| `Write` | 高（全文進 context、再寫出） | 不可避免：純新內容（codex 草稿、`_active/{brief_id}.yaml`、`_tree.yaml`、verdict suggestions 彙整、新建 brief.md） |
 
 ### 鐵律
 
@@ -106,9 +106,10 @@
 ```
 [啟動：使用者開新 brief]
   ↓
-Step A. 鎖定（寫 .framework/briefs/_active.yaml）
-  - 偵測既有 _active.yaml → 拒新 brief，提示既有 active
-  - 無 → 建立 _active.yaml { brief_id, started_at, phase: exploring }
+Step A. 鎖定（寫 .framework/briefs/_active/{brief_id}.yaml；multi-lane admission 見 batch-lock §3.1）
+  - 跑 admission 閘 scope_check.py --overlap <預估 affected_repos>
+  - 無交集 → 建立 _active/{brief_id}.yaml { brief_id, affected_repos, scope_status: provisional, phase: exploring, ... }
+  - 有交集 → 顯示衝突歸屬（lane / 無主 dirty），使用者選：等待（可排 inbox）/ 取消衝突 lane / 升級為其 sub-brief / 改 scope 避開
   ↓
 Step B. 建 brief 目錄
   - .framework/briefs/{brief_id}/{brief.md, _tree.yaml(初始), _manifest.md(初始)}
@@ -117,6 +118,8 @@ Step B. 建 brief 目錄
 Step C. Explore 階段（見 Explore Section 4）
   ↓
 Step D. 等使用者批准（/brief-approve）
+  - 批准時 scope 收斂重驗：scope_check.py --overlap <plan repos 聯集> --self {brief_id} 通過
+    → 更新 lock 的 affected_repos + scope_status: confirmed（batch-lock §2.3；撞到 → 升級使用者）
   ↓
 Step E. Execute 階段（見 Execute Section 5）
   ↓
@@ -143,6 +146,8 @@ Step F'. Amendment 期（**可選、由使用者觸發**）
   ↓
 Step F2. brief_stages.local_test（整合確認；**依 pipeline.yaml brief_stages 配置**——new_feature 有；
          bug_fix / planning_only 無此 stage、cancelled brief 一律略過）
+  - **進 F2 前先過 local_test 全域互斥**（batch-lock §3.4）：掃 _active/*.yaml，無他 lane 處於
+    phase: local_test 才可開跑（integration-tester 起真 service，共享機器資源 repo-disjoint 擋不住）
   - main spawn integration-tester（actor=agent），input：plan [runtime] 條目 + affected_repos + sub-brief artifacts
   - agent 依 plan [runtime] 精確啟 service set（+ 依賴 + 必要 infra，不全啟）→ 對 endpoint 發 req
     驗 response 對照預期（response 為主、log 為輔、不查 DB；outbound 臨時 patch 測完強制 revert）
@@ -160,12 +165,12 @@ Step H. 歸檔（**2026-07-06 腳本化**）
   - `python .framework/scripts/brief_close.py {brief_id}`：
     串 tree_check → verdict_check → session_check → telemetry_extract → mandate 未收回擋
     → mv briefs/{brief_id}/ → _archive/{year-month}/{brief_id}/（**注意 year-month 子層**）
-    → 驗 _active.yaml brief_id 相符後刪
+    → 刪本 lane 的 _active/{brief_id}.yaml（收尾全程持 _closing.lock 互斥，防多 lane 交錯寫共用遙測）
   - exit 2 → 顯示未過清單、修正後重跑；使用者明示 skip 才可 --force（記 trail）
   - .framework/memory/sessions/{brief_id}.md 已在 Step G 寫好（session_check 驗 learning-loop §4 格式）
   ↓
 Step I. 解鎖
-  - _active.yaml 已由 brief_close.py 清除；腳本半途中斷殘留時，依腳本輸出指引處理後重跑
+  - 本 lane 的 _active/{brief_id}.yaml 已由 brief_close.py 清除；腳本半途中斷殘留時，依腳本輸出指引處理後重跑
   - 回覆使用者完成
 ```
 
@@ -173,7 +178,7 @@ Step I. 解鎖
 - Step F、F2、G、H、I **皆不可省**（F2 依 pipeline.yaml brief_stages——無該 stage 的 pipeline 自然略過）。即使 brief 流程順利、verdict 全 pass、使用者都點 yes，仍必經此序。
 - 跳過 Step G Step 1（寫 sessions）→ 下次 brief 的 Explore Step 2 找不到歷史，學習迴圈失效
 - 跳過 Step H 的 year-month 子層 → 歸檔目錄將被未分類 brief 塞滿，後續難找
-- 中斷恢復：使用者 Ctrl-C 後 `_active.yaml` 還在 → 重新啟動 main → 偵測到 active brief → 提示使用者執行 `/framework-recover`。詳見 `core/batch-lock.md`。
+- 中斷恢復：使用者 Ctrl-C 後該 lane 的 `_active/{brief_id}.yaml` 還在 → 重新啟動 main → 偵測到殭屍 lane → 提示使用者執行 `/framework-recover {brief_id}`（他 lane 不受影響）。詳見 `core/batch-lock.md` §4。
 
 ---
 
@@ -458,7 +463,7 @@ Amendment 是 L0 holistic review pass 後、Step G 學習迴圈前的可選輕�
 
 ### Main 在 Step F' 期間的狀態
 
-- `_active.yaml.phase` 維持 `holistic_review_passed`（或新增 `awaiting_amendment_or_next`，落地時擇一）
+- 本 lane lock 的 `phase` 維持 `holistic_review_passed`（或新增 `awaiting_amendment_or_next`，落地時擇一）
 - `_tree.yaml.nodes.{root}.state` 維持 `done` 直到使用者觸發進 Step G（或維持 `reviewing` 過渡，落地時擇一）
 
 > **落地待定**：Step F' 期間 root.state 與 active.phase 的具體值由 batch-lock.md / e2r-tree.md 決定；本文件描述行為層、不鎖具體 enum 值。實作時須與 `core/batch-lock.md` 一致。
@@ -477,7 +482,9 @@ Amendment 是 L0 holistic review pass 後、Step G 學習迴圈前的可選輕�
    exit 2 → 修正後重跑; 驗證通過 → 把 MANDATE OK 摘要唸給使用者確認後才開始自主執行
    （main 同時提醒使用者離鍵盤前手動切 permission mode → auto，降低非機械閘的一般權限彈窗；
      機械閘守的動作在 mandate active 時直接 deny 不彈窗，見 §5.6.3）
-3. _active.yaml.autonomous_mandate 欄位只放指針值 "_mandate.json"（不放內容）
+3. 本 lane lock（_active/{brief_id}.yaml）的 autonomous_mandate 欄位只放指針值 "_mandate.json"（不放內容）
+   （機械閘對 registry 取聯集：任一 lane mandate active 即 deny 生效——多 lane 並行時提醒各 session
+     設 FRAMEWORK_BRIEF_ID 精確歸屬，避免他 lane 的 mandate 誤傷本 lane 的 ask 語意）
 4. 執行中: 只推進 auto_advance 白名單; 到人審關卡停（除非該關卡在 pre_authorized）;
    觸發 HOLD 條件 → 停該線、寫進 on_stop.report、不替使用者猜
 5. 使用者回來（親自接手或 /framework-recover）→ main 顯示 mandate 摘要 + 已推進狀態
@@ -659,7 +666,7 @@ Main 是**唯一沒有 reviewer 的角色**（producer → reviewer → adversar
 
 main 寫關鍵狀態檔、查狀態都是無 reviewer 兜底的機械操作，必強制自驗：
 
-- **狀態落地自驗**：寫關鍵狀態檔後，用**絕對路徑** `ls`/`cat` 確認「落在規範位置 + 內容對」。**建 brief 後必驗 `_active.yaml` 在 `.framework/briefs/_active.yaml`（briefs 根，非 brief 子目錄）**，對照 `core/batch-lock.md`。曾發生 `_active.yaml` 寫進 brief 子目錄 → `/brief-status` `/brief-approve` 從 root 找 lock 全抓不到、新 session 看不到 brief。
+- **狀態落地自驗**：寫關鍵狀態檔後，用**絕對路徑** `ls`/`cat` 確認「落在規範位置 + 內容對」。**建 brief 後必驗 lock 在 `.framework/briefs/_active/{brief_id}.yaml`（registry 目錄，非 brief 子目錄；檔名必等於 brief_id）**，對照 `core/batch-lock.md`。曾發生 lock 寫進 brief 子目錄 → `/brief-status` `/brief-approve` 從 registry 找 lock 全抓不到、新 session 看不到 brief。
 - **查詢回空不單信**：`Glob`/`Grep`「No files found」是高風險信號（受 cwd / pattern 影響），關鍵結論用第二法（絕對路徑 `ls` / 換工具）交叉驗證再下定論。
 - **Bash cwd 紀律**：`cd` 在 Bash 工具內持久，會污染後續 `Glob` 相對路徑解析致誤報；`cd` 後須 cd 回主目錄，或用子 shell `(cd ...; ...)`，或一律絕對路徑。
 - **phase 轉換 self-check**：每個 phase 轉換點（建 brief / plan 定稿 / 批准 / 歸檔）跑「狀態檔位置 + schema + 落地」自驗清單，對照 `core/batch-lock.md`。
@@ -684,7 +691,7 @@ main 寫關鍵狀態檔、查狀態都是無 reviewer 兜底的機械操作，�
 - **不要在 main session 內 cache 大量資料**（intel-pack 是檔案、不是 main 的 in-memory state）
 - **每次重 Explore 前重讀檔案**（_tree.yaml、plan.md），不要信 main 自己的記憶
 - **進度顯示**：每完成一個 verdict 就更新 _manifest.md（人類追進度的入口）
-- **Main 累積 token 失控時**：reset 是 OK 的——重啟 main，從 _active.yaml + _tree.yaml + _manifest.md 重建狀態
+- **Main 累積 token 失控時**：reset 是 OK 的——重啟 main，從 _active/{brief_id}.yaml + _tree.yaml + _manifest.md 重建狀態
 
 ---
 
@@ -695,7 +702,7 @@ main 寫關鍵狀態檔、查狀態都是無 reviewer 兜底的機械操作，�
 - `core/e2r-tree.md`：_tree.yaml 規範與遍歷邏輯
 - `core/review-loop.md`：fail verdict 1-2-3-4 輪規則
 - `core/clarification.md`：Explore Step 3 訪談規則
-- `core/batch-lock.md`：_active.yaml 語意
+- `core/batch-lock.md`：lock registry（_active/{brief_id}.yaml）語意、multi-lane 並發規則
 - `core/learning-loop.md`：brief 完成時的學習迴圈
 - `core/escalation-rules.md`：升級使用者的觸發條件
 - `core/trust-modes.md`：Bash 白名單三模式

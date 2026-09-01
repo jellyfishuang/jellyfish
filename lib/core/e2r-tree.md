@@ -607,6 +607,6 @@ nodes:
 - `core/control-plane.md`：main 何時建 / 改 _tree.yaml
 - `core/typed-interfaces.md`：verdict 中的 `decomposition_proposal` 欄位
 - `core/review-loop.md`：fail verdict 的回 Explore 邏輯
-- `core/batch-lock.md`：_active.yaml 與 _tree.yaml 的關係
+- `core/batch-lock.md`：lock registry（_active/{brief_id}.yaml）與 _tree.yaml 的關係
 - `core/escalation-rules.md`：何時升級使用者拆 root brief
 - `core/amendment.md`：amendments[] 欄位的完整流程規範

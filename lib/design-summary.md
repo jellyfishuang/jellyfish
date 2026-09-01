@@ -618,6 +618,10 @@ L0 holistic review 不 spawn 專門 role；main 直接做（理由：一致性�
 
 ### 11.3 並發（8c）
 
+> ⚠️ **本節決議已於 2026-09-01 被取代**（multi-lane 改制，現行規範見 `core/batch-lock.md`）：
+> 「全域單 active brief」→「每 scope 單 active」——repo-disjoint 的 brief 可多 lane 並行
+> （lock registry `briefs/_active/{brief_id}.yaml`，每 lane 一個 session）。以下為原決議史料。
+
 - **單 active brief**（`.framework/briefs/_active.yaml` 為單一進行中 brief 的鎖）
 - 試開新 brief 時若已 active → 提示：等待 / 升級為 sub-brief / 取消當前
 - 「multi-agent」=「同一個 main session 內 spawn 多 subagent」，**不是**多 process / 多 session 同時跑
@@ -1293,7 +1297,7 @@ Ctrl-C 後 _active.yaml 的處置、`/framework-recover` 的逐 sub-brief 詢問
 - **Producer 對未來生效的東西只能「提議」，不能直寫**（防幻覺放大）
 - **E²R 受限 2 層**：不要試圖做無界遞迴
 - **Sub-brief 不訪談使用者**：模糊就回 ambiguity verdict
-- **Single active brief**：multi-agent ≠ multi-process
+- **Single active brief**：multi-agent ≠ multi-process（⚠️ 2026-09-01 已放寬為「每 scope 單 active」multi-lane，見 `core/batch-lock.md`）
 - **Trust mode 是模式選擇，不是繞過權限**：sandbox 仍擋 sudo / rm -rf / / chmod 777 /
 
 ### 實測過的技術限制

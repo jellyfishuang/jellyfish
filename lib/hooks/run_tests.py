@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-"""Gate scripts 回歸測試 (84 case, 含三輪對抗式驗證回饋案例 + mandate ask 升級 deny)。
+"""Gate scripts 回歸測試 (91 case, 含三輪對抗式驗證回饋案例 + mandate ask 升級 deny
++ multi-lane lock registry: 聯集語意 / legacy 單檔兼容 / FRAMEWORK_BRIEF_ID 精確歸屬)。
 測試對象 = 本檔同目錄的 bash_gate.py / path_gate.py / fullwidth_gate.py (+ gate_mandate.py)。
 case 以 GATE_BRIEFS_DIR 注入 briefs fixture 與真實 repo 隔離; DEFAULT_PATH/NOMOD 哨兵改跑
 fakeroot 副本 (不設環境變數), 驗 __file__ 相對預設路徑與 import 失敗回退。
@@ -35,12 +36,23 @@ APOS_GO = os.path.join(FIX, "apos.go").replace("\\", "/")
 NON_GO = os.path.abspath(__file__).replace("\\", "/")
 
 
-def _briefs(name, active_yaml, mandate_json):
+def _briefs(name, active_yaml, mandate_json, legacy=False, extra_locks=()):
+    """briefs fixture。預設寫 registry 鎖 _active/test-brief.yaml (multi-lane, 2026-09-01);
+    legacy=True 寫舊制單檔 _active.yaml (遷移期兼容 case); extra_locks=[(檔名, 內容)] 加掛他 lane 鎖。"""
     root = os.path.join(FIX, name)
     os.makedirs(os.path.join(root, "test-brief"))
     if active_yaml is not None:
-        with open(os.path.join(root, "_active.yaml"), "w", encoding="utf-8") as f:
+        if legacy:
+            p = os.path.join(root, "_active.yaml")
+        else:
+            os.makedirs(os.path.join(root, "_active"), exist_ok=True)
+            p = os.path.join(root, "_active", "test-brief.yaml")
+        with open(p, "w", encoding="utf-8") as f:
             f.write(active_yaml)
+    for fname, content in extra_locks:
+        os.makedirs(os.path.join(root, "_active"), exist_ok=True)
+        with open(os.path.join(root, "_active", fname), "w", encoding="utf-8") as f:
+            f.write(content)
     if mandate_json is not None:
         with open(os.path.join(root, "test-brief", "_mandate.json"), "w", encoding="utf-8") as f:
             f.write(mandate_json)
@@ -48,7 +60,8 @@ def _briefs(name, active_yaml, mandate_json):
 
 
 ACTIVE_YAML = "brief_id: test-brief" + NL + "phase: executing" + NL + "autonomous_mandate: _mandate.json" + NL
-BRIEFS_NONE = os.path.join(FIX, "briefs_none")  # 無 _active.yaml -> mandate off (預設 fixture)
+LANE_A_YAML = "brief_id: lane-a" + NL + "phase: executing" + NL  # 他 lane, 無 mandate 指針
+BRIEFS_NONE = os.path.join(FIX, "briefs_none")  # 無任何鎖 -> mandate off (預設 fixture)
 os.makedirs(BRIEFS_NONE)
 BRIEFS_ACTIVE = _briefs("briefs_active", ACTIVE_YAML, '{"status": "active"}')
 BRIEFS_CONSUMED = _briefs("briefs_consumed", ACTIVE_YAML, '{"status": "consumed"}')
@@ -59,6 +72,14 @@ BRIEFS_QUOTED = _briefs("briefs_quoted",
                         '{"status": "active"}')
 BRIEFS_BOM_YAML = _briefs("briefs_bom_yaml", "\ufeff" + ACTIVE_YAML, '{"status": "active"}')
 BRIEFS_BOM_JSON = _briefs("briefs_bom_json", ACTIVE_YAML, "\ufeff" + '{"status": "active"}')
+# multi-lane registry cases (2026-09-01)
+BRIEFS_LEGACY = _briefs("briefs_legacy", ACTIVE_YAML, '{"status": "active"}', legacy=True)
+BRIEFS_MULTI = _briefs("briefs_multi", ACTIVE_YAML, '{"status": "active"}',
+                       extra_locks=(("lane-a.yaml", LANE_A_YAML),))  # \u96d9 lane, \u5176\u4e00 mandate active
+BRIEFS_MULTI_OFF = _briefs("briefs_multi_off", ACTIVE_YAML, '{"status": "consumed"}',
+                           extra_locks=(("lane-a.yaml", LANE_A_YAML),))  # \u96d9 lane, \u5168\u975e active
+BRIEFS_CLOSING = _briefs("briefs_closing", None, None,
+                         extra_locks=(("_closing.lock", "pid: 1" + NL),))  # \u53ea\u6709 close-mutex, \u975e lane \u9396
 
 # fakeroot: hooks/ 與 briefs/ 兄弟目錄, 不設 GATE_BRIEFS_DIR, 驗 __file__ 相對預設路徑 (../briefs)
 DEFAULT_PATH = "__default__"      # 哨兵: 跑 FAKEHOOKS 副本
@@ -72,7 +93,8 @@ for root, files in ((FAKEHOOKS, ("bash_gate.py", "path_gate.py", "gate_mandate.p
         shutil.copy(os.path.join(HERE, fn), root)
     briefs = os.path.join(os.path.dirname(root), "briefs")
     os.makedirs(os.path.join(briefs, "test-brief"))
-    with open(os.path.join(briefs, "_active.yaml"), "w", encoding="utf-8") as f:
+    os.makedirs(os.path.join(briefs, "_active"))
+    with open(os.path.join(briefs, "_active", "test-brief.yaml"), "w", encoding="utf-8") as f:
         f.write(ACTIVE_YAML)
     with open(os.path.join(briefs, "test-brief", "_mandate.json"), "w", encoding="utf-8") as f:
         f.write('{"status": "active"}')
@@ -169,6 +191,16 @@ cases = [
     ("bash_gate", {"tool_input": {"command": "git commit -m x"}}, "ask", BRIEFS_BROKEN),
     ("bash_gate", {"tool_input": {"command": "git commit -m x"}}, "ask", BRIEFS_NOPTR),
     ("bash_gate", {"tool_input": {"command": "git commit -m x"}}, "ask", os.path.join(FIX, "briefs_missing")),
+    # --- multi-lane registry (2026-09-01): 聯集語意 + legacy 兼容 + env 精確歸屬 ---
+    ("bash_gate", {"tool_input": {"command": "git commit -m x"}}, "deny", BRIEFS_LEGACY),
+    ("bash_gate", {"tool_input": {"command": "git commit -m x"}}, "deny", BRIEFS_MULTI),
+    ("path_gate", {"tool_input": {"file_path": "D:/Proj/Root/.framework/memory/lessons/x.md"}}, "deny", BRIEFS_MULTI),
+    ("bash_gate", {"tool_input": {"command": "git commit -m x"}}, "ask", BRIEFS_MULTI_OFF),
+    ("bash_gate", {"tool_input": {"command": "git commit -m x"}}, "ask", BRIEFS_MULTI,
+     {"FRAMEWORK_BRIEF_ID": "lane-a"}),       # env 精確歸屬: 他 lane 的 mandate 不干涉本 session
+    ("bash_gate", {"tool_input": {"command": "git commit -m x"}}, "deny", BRIEFS_MULTI,
+     {"FRAMEWORK_BRIEF_ID": "test-brief"}),   # env 命中自己 lane 的 mandate
+    ("bash_gate", {"tool_input": {"command": "git commit -m x"}}, "ask", BRIEFS_CLOSING),
 ]
 
 
@@ -188,6 +220,9 @@ for case in cases:
     briefs = case[3] if len(case) > 3 else BRIEFS_NONE
     env = dict(os.environ)
     env.pop("GATE_BRIEFS_DIR", None)
+    env.pop("FRAMEWORK_BRIEF_ID", None)  # 與真實環境隔離
+    if len(case) > 4:
+        env.update(case[4])
     if briefs == DEFAULT_PATH:
         script_path = os.path.join(FAKEHOOKS, script + ".py")
     elif briefs == DEFAULT_NOMOD:

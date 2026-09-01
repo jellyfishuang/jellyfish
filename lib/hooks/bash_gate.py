@@ -96,16 +96,22 @@ def main():
         if RE_DOWN_VOLUMES.search(scrubbed):
             _log(f"deny compose-down-v: {_san(cmd)}")
             _deny("禁用 docker compose down -v: 會刪除 volume; 收尾用 docker compose stop")
-        if _mandate_active():
-            _log(f"deny compose-down (mandate): {_san(cmd)}")
-            _deny("mandate 生效中, 無人可確認 compose down: 收尾改用 docker compose stop; 確需 down 記入 on_stop.report 等使用者回場")
+        mid = _mandate_active()
+        if mid:
+            _log(f"deny compose-down (mandate {mid}): {_san(cmd)}")
+            _deny(f"lane {mid} mandate 生效中, 無人可確認 compose down: 收尾改用 docker compose stop; "
+                  f"確需 down 記入 on_stop.report 等使用者回場 (若你在別條 lane: 先 consume 該 mandate, "
+                  f"或本 session 設 FRAMEWORK_BRIEF_ID 精確歸屬)")
         _log(f"ask compose-down: {_san(cmd)}")
         _ask("docker compose down 會刪除容器, 收尾慣例是 stop; 確定要 down 才放行")
 
     if RE_GIT_COMMIT_PUSH.search(scrubbed):
-        if _mandate_active():
-            _log(f"deny git-commit-push (mandate): {_san(cmd)}")
-            _deny("mandate 生效中, git commit/push 永不可預授權 (control-plane §5.6.3): 記入 on_stop.report, 使用者回場親自處理")
+        mid = _mandate_active()
+        if mid:
+            _log(f"deny git-commit-push (mandate {mid}): {_san(cmd)}")
+            _deny(f"lane {mid} mandate 生效中, git commit/push 永不可預授權 (control-plane §5.6.3): "
+                  f"記入 on_stop.report, 使用者回場親自處理 (若你在別條 lane: 先 consume 該 mandate, "
+                  f"或本 session 設 FRAMEWORK_BRIEF_ID 精確歸屬)")
         _log(f"ask git-commit-push: {_san(cmd)}")
         _ask("git commit/push 由使用者親自執行 (CLAUDE.md multi-repo 鐵律); 使用者已明確要求才放行")
 

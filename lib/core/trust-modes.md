@@ -303,7 +303,8 @@ def sync_permissions(new_trust_mode):
   "Bash(git add:*)",
   "Bash(cp:*)",
   "Bash(mv:*)",
-  "Bash(rm .framework/briefs/_active.yaml)",
+  "Bash(rm .framework/briefs/_active/*.yaml)",
+  "Bash(rm .framework/briefs/_active/_closing.lock)",
   "Bash(rm -rf .framework/briefs/*/)",
   "Bash(rm -rf .framework/worktrees/*/)",
   // recipe 設的 build / test / lint 系列
@@ -385,7 +386,7 @@ Main 自己用的 Bash 不在 producer / reviewer 白名單範圍內。Main 永�
 - `mv`（重命名 / 歸檔 brief 到 _archive/）
 - `mkdir` / `mkdir -p`（建立目錄結構）
 - `ls` / `ls -la`
-- `rm` 限 `.framework/briefs/_active.yaml` / `.framework/briefs/{...}/` 內 / `.framework/worktrees/` 內 / `.framework/codex/.backup-*/` 內
+- `rm` 限 `.framework/briefs/_active/` 內（lane 鎖 / _closing.lock）/ `.framework/briefs/{...}/` 內 / `.framework/worktrees/` 內 / `.framework/codex/.backup-*/` 內
 - `cat` / `head` / `tail` / `wc`（純讀）
 
 **Git 管理**：

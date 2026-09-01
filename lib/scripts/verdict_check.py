@@ -3,7 +3,7 @@
 
 用法 (Python 3):
   python3 verdict_check.py <verdict.json>   # 驗單檔 (main §6.3 收 verdict 時)
-  python3 verdict_check.py <brief_dir>      # 掃 **/reviews/*.verdict.json 全驗 (歸檔前抽查)
+  python3 verdict_check.py <brief_dir>      # 掃 **/reviews/ 下所有 verdict 檔全驗 (歸檔前抽查)
 
 規則:
   verdict ∈ 7 枚舉; actor.{role,type,spec_id,round,stage} 必填 + adversarial bool
@@ -17,6 +17,7 @@
     partial→partial_completed + partial_missing 皆 ≥1
 exit: 0 全過 / 1 檔案或 JSON 錯 / 2 schema 違規 (列明細)。"""
 import json
+import datetime
 import os
 import sys
 
@@ -29,6 +30,27 @@ FINDING_REQUIRED = ("severity", "dimension", "finding", "why_it_hurts_future",
                     "suggested_direction", "evidence", "spec_checked")
 SKETCH_REQUIRED = ("focus", "change", "shape", "reuse_vs_new",
                    "overlaps_existing", "pattern_divergence", "key_tradeoffs", "ack_required")
+
+
+# 2026-08-18 grandfather: 此日之前落檔的 verdict 早於 is_verdict_file() 修好之前, 整批未曾被掃過
+# (舊掃描條件只認 .verdict.json 結尾, {role}.verdict.{segment}.json 全數逃過)。
+# 這些歷史檔的 schema 違規降為 WARN 不擋歸檔; 之後落的檔一律嚴格。
+# 判準用 mtime 而非檔名語序 —— 兩種語序往後都還會用, 用檔名切等於讓閘繼續半殘。
+LEGACY_SCHEMA_CUTOFF = datetime.date(2026, 8, 18)
+
+
+def is_legacy(path):
+    try:
+        mt = datetime.date.fromtimestamp(os.path.getmtime(path))
+    except OSError:
+        return False
+    return mt < LEGACY_SCHEMA_CUTOFF
+
+
+def is_verdict_file(fname):
+    """本專案落檔慣例有兩種語序: {role}.verdict.{segment}.json 與 {role}.{segment}.verdict.json。
+    原本只認 .verdict.json 結尾, 前者整批逃過機械閘。"""
+    return fname.endswith(".json") and ".verdict." in fname
 
 
 def validate_advisory(data, label):
@@ -141,9 +163,9 @@ def main():
         for dirpath, _d, fnames in os.walk(target):
             if os.path.basename(dirpath) != "reviews":
                 continue
-            files += [os.path.join(dirpath, f) for f in fnames if f.endswith(".verdict.json")]
+            files += [os.path.join(dirpath, f) for f in fnames if is_verdict_file(f)]
         if not files:
-            print(f"brief_dir 下無 *.verdict.json: {target}")
+            print(f"brief_dir 下無 verdict 檔: {target}")
             return 0
     elif os.path.isfile(target):
         files = [target]
@@ -151,7 +173,7 @@ def main():
         print(f"目標不存在: {target}", file=sys.stderr)
         return 1
 
-    all_errs, all_warns = [], []
+    all_errs, all_warns, legacy_errs, legacy_files = [], [], [], set()
     for f in files:
         label = os.path.relpath(f, target) if os.path.isdir(target) else os.path.basename(f)
         try:
@@ -160,16 +182,26 @@ def main():
             print(f"{label}: 非合法 JSON: {e}", file=sys.stderr)
             return 1
         errs, warns = validate(data, label)
-        all_errs += errs
         all_warns += warns
+        if errs and is_legacy(f):
+            legacy_errs += errs
+            legacy_files.add(label)
+        else:
+            all_errs += errs
     for w in all_warns:
         print(f"WARN {w}", file=sys.stderr)
+    if legacy_errs:
+        print(f"LEGACY {len(legacy_files)} 檔 {len(legacy_errs)} 條 schema 違規降為警告"
+              f" (mtime < {LEGACY_SCHEMA_CUTOFF}, 早於掃描條件修好之前, 不擋歸檔):", file=sys.stderr)
+        for e in legacy_errs:
+            print(f"  ~ {e}", file=sys.stderr)
     if all_errs:
         print("verdict schema 違規:", file=sys.stderr)
         for e in all_errs:
             print(f"  - {e}", file=sys.stderr)
         return 2
-    print(f"VERDICT OK  files={len(files)}")
+    print(f"VERDICT OK  files={len(files)}"
+          + (f"  (legacy 降級 {len(legacy_files)} 檔)" if legacy_files else ""))
     return 0
 
 

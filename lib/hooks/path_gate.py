@@ -49,10 +49,13 @@ def main():
     if any(a in p for a in ALLOWED):
         return
     if any(g in p for g in GUARDED):
-        if _mandate_active():
-            _log(f"deny guarded-write (mandate): {p}")
-            print("mandate 生效中, memory/codex/skills 寫入永不可預授權 (control-plane §5.6.3): "
-                  "觀察改走 verdict.suggest_* 聚合到 _suggestions.json", file=sys.stderr)
+        mid = _mandate_active()
+        if mid:
+            _log(f"deny guarded-write (mandate {mid}): {p}")
+            print(f"lane {mid} mandate 生效中, memory/codex/skills 寫入永不可預授權 (control-plane §5.6.3): "
+                  f"觀察改走 verdict.suggest_* 聚合到 _suggestions.json "
+                  f"(若你在別條 lane: 先 consume 該 mandate, 或本 session 設 FRAMEWORK_BRIEF_ID 精確歸屬)",
+                  file=sys.stderr)
             sys.exit(2)
         _log(f"ask guarded-write: {p}")
         print(json.dumps({"hookSpecificOutput": {

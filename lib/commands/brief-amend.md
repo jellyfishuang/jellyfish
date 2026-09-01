@@ -31,7 +31,7 @@ allowed-tools: Read, Write, Edit, Glob, Grep, Bash, Task
 | # | 檢查 | 失敗時提示 |
 |---|---|---|
 | 1 | `.framework/.initialized` 存在 | 「Framework 未初始化，先跑 `/framework-init`」 |
-| 2 | `.framework/briefs/_active.yaml` 存在 | 「目前無 active brief，無法 amendment。`/brief-new` 開新 brief」 |
+| 2 | 目標 brief 的 lock `.framework/briefs/_active/{root}.yaml` 存在（root 解析：sub_id 支援 `{root}.{sub}` 全稱；純 `{sub}` 時以本 session 持有的 brief 解析 → registry 唯一 lock → 多 lane 則要求全稱） | 「目前無 active brief，無法 amendment。`/brief-new` 開新 brief」 |
 | 3 | `.framework/briefs/{root}/sub-briefs/{sub_id}/` 存在 | 「找不到 sub-brief `{sub_id}`。當前 brief 的 sub-brief 列表：[...]」 |
 | 4 | `_tree.yaml.nodes.{sub_id}.state == done` | 「sub-brief `{sub_id}` 目前 state={state}，僅 done 的 sub-brief 可 amendment」 |
 | 5 | Brief 尚未進入歸檔（`.framework/briefs/{root}/` 仍在原位、控制面未進 Step H） | 「Brief 已歸檔。請用 `/brief-reopen` 重啟（Phase B 才實作）或 `/brief-new` 開新 brief」 |

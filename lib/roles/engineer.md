@@ -43,7 +43,7 @@ worktree: required
 
 **Forbidden**：
 - 其他 sub-brief 的 worktree
-- main 管理檔（_tree.yaml、_manifest.md、_active.yaml、_suggestions.json）
+- main 管理檔（_tree.yaml、_manifest.md、briefs/_active/ 內任何 lock、_suggestions.json）
 - .claude/skills/、.framework/codex/、.framework/memory/**（不直寫）
 - .framework/briefs/**/plan.md（不改 plan，發現 plan 有問題回 ambiguity）
 

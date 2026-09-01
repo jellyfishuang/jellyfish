@@ -28,7 +28,8 @@ allowed-tools: Read, Write, Edit, Bash, Glob, Task
    - 先看 .framework/briefs/{brief_id}/（in-flight 但 cancelled / failed）
    - 再看 .framework/briefs/_archive/{year-month}/{brief_id}/（已歸檔）
 2. 若都找不到 → 顯示錯誤 + 列近期 brief
-3. 確認當前無 active brief（若有，同 /brief-new 處置）
+3. 跑 admission 閘（同 /brief-new Step 2.5：scope_check.py --overlap <原 brief 的 affected_repos>；
+   撞現有 lane / 無主 dirty → 同 /brief-new 四選項處置）
 4. 顯示原 brief 摘要（state / 完成時間 / sub-briefs / 是否有 final artifact）
 5. 詢問 reopen 類型：
    (a) 接續執行（從中斷點 / cancelled 點繼續）
@@ -42,7 +43,7 @@ allowed-tools: Read, Write, Edit, Bash, Glob, Task
 
 ```
 1. 把歸檔目錄移回 .framework/briefs/{brief_id}/（從 _archive/ 還原）
-2. 寫 _active.yaml（新 pid / heartbeat）
+2. 寫 _active/{brief_id}.yaml（新 pid / heartbeat；affected_repos 承原 brief、scope_status: confirmed）
 3. 對 in-flight 節點（state ∈ {executing, paused, failed}）跑類似 /framework-recover 的對話
 4. 對 done 節點：保持 done
 5. 進入主迴圈
@@ -55,7 +56,7 @@ allowed-tools: Read, Write, Edit, Bash, Glob, Task
 2. 把所有 sub-brief 的 state 重置為 pending
 3. pipeline_stages.* 重置 rounds 為 0、verdict null
 4. plan / brief.md 保留
-5. 寫 _active.yaml
+5. 寫 _active/{brief_id}.yaml
 6. 進入 Execute 主迴圈（從零開始跑 stage）
 ```
 

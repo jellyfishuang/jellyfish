@@ -104,7 +104,7 @@ allowed-tools: Read, Edit
 
 切換需重啟 Claude Code 才會完全生效（settings.local.json 內 permissions 由 Claude Code 在 session 啟動時讀入）：
 - 重啟後 Bash 白名單採用新模式
-- 已在跑的 sub-brief 不受影響（保留啟動時的 mode；見 _active.yaml.trust_mode）
+- 已在跑的 sub-brief 不受影響（保留啟動時的 mode；見各 lane lock（_active/{brief_id}.yaml）的 trust_mode）
 - 同時更新：
   - `.framework/.initialized.trust_mode` = new
   - `.claude/settings.local.json.trust_mode` = new

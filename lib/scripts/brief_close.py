@@ -1,10 +1,13 @@
 #!/usr/bin/env python3
-"""Brief 收尾機械段: 串檢查鏈 → 歸檔搬移 → 清 _active.yaml。取代收尾清單 step 7-8 的手動操作。
+"""Brief 收尾機械段: 串檢查鏈 → 歸檔搬移 → 清 lane lock。取代收尾清單 step 7-8 的手動操作。
 
 用法 (Python 3):
   python3 brief_close.py <brief_id> [--root <dir>] [--force] [--dry-run]
 
 流程 (依序, 任一擋下即停):
+  0. close-mutex: 取 briefs/_active/_closing.lock (O_EXCL)——多 lane 同時收尾會交錯寫共用
+     memory/telemetry/*.jsonl, 故收尾全程序列化; 他 lane 持有且未 stale (<10min) → exit 1 稍候重跑;
+     stale 鎖直接搶佔 (crash 殘留)
   1. tree_check.py           — _tree.yaml schema
   2. verdict_check.py        — 已落檔 verdict 全量 schema
   3. session_check.py        — sessions/{id}.md 存在 + learning-loop §4 模板格式 (2026-07-07)
@@ -14,7 +17,8 @@
      Windows 佔用防護 (2026-07-09 WinError 32 實撞——外部程序 cwd 停在 brief 目錄內即鎖死 rename):
      rename 重試 ×3 → fallback copytree + 逐檔完整性驗證; 副本驗證通過即視為歸檔成功,
      源目錄清除為 best-effort (殘骸不阻斷收尾, 印手動清除指引); 自身 cwd 在 brief 目錄內時先 chdir root
-  7. _active.yaml 存在且 brief_id 相符 → 刪; 不符 → 保留 + 警告 (不誤殺別的 brief 的鎖)
+  7. 刪本 lane 的鎖 briefs/_active/{brief_id}.yaml (multi-lane registry, 2026-09-01);
+     legacy 單檔 _active.yaml 存在且 brief_id 相符時也刪 (遷移期兼容), 不符 → 保留 + 警告
      (在歸檔副本驗證成功後即清鎖——源目錄殘骸不再擋 lock 清理; 歸檔完全失敗才保留鎖 + exit 1)
 --force: 檢查 1-4 降為警告續跑 (使用者明示 skip 時才用, 記 trail); **不豁免第 5 項 mandate 閘**——
          status=active 一律 exit 2 (歸檔永不可預授權, 收回只需使用者一句確認)
@@ -82,6 +86,34 @@ def archive_move(bdir, dest):
         return True, True  # 副本完整, 只是源目錄清不掉 (外部程序佔用) — 不阻斷收尾
 
 
+def _acquire_closing_lock(briefs):
+    """close-mutex: 序列化多 lane 收尾 (telemetry_extract 對共用 jsonl 的寫入無鎖)。
+    回傳 lock 路徑; 他 lane 持有且未 stale (<10min) → None。stale 鎖直接搶佔 (crash 殘留)。"""
+    reg = os.path.join(briefs, "_active")
+    os.makedirs(reg, exist_ok=True)
+    p = os.path.join(reg, "_closing.lock")
+    for _ in range(2):
+        try:
+            fd = os.open(p, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+            os.write(fd, f"pid: {os.getpid()}\nat: {datetime.datetime.now().isoformat()}\n".encode())
+            os.close(fd)
+            return p
+        except FileExistsError:
+            try:
+                age = time.time() - os.path.getmtime(p)
+            except OSError:
+                continue  # 剛被釋放, 重試取鎖
+            if age > 600:
+                print(f"WARN 搶佔 stale _closing.lock (age {int(age)}s)", file=sys.stderr)
+                try:
+                    os.remove(p)
+                except OSError:
+                    pass
+                continue
+            return None
+    return None
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("brief_id")
@@ -93,6 +125,21 @@ def main():
     root = os.path.abspath(a.root) if a.root else os.getcwd()
     briefs = os.path.join(root, ".framework", "briefs")
     bdir = os.path.join(briefs, a.brief_id)
+
+    mutex = _acquire_closing_lock(briefs)
+    if mutex is None:
+        print("另一 lane 收尾中 (_active/_closing.lock 未釋放且未 stale)——稍候重跑", file=sys.stderr)
+        return 1
+    try:
+        return _close(a, root, briefs, bdir)
+    finally:
+        try:
+            os.remove(mutex)
+        except OSError:
+            pass
+
+
+def _close(a, root, briefs, bdir):
     if not os.path.isdir(bdir):
         print(f"brief 目錄不存在: {bdir}", file=sys.stderr)
         return 1
@@ -150,21 +197,26 @@ def main():
     os.makedirs(os.path.dirname(dest), exist_ok=True)
     ok, husk = archive_move(bdir, dest)
     if not ok:
-        print(f"歸檔失敗——確認無程序佔用 {bdir} (shell cwd 勿停在該目錄內) 後重跑; _active.yaml 保留未動",
+        print(f"歸檔失敗——確認無程序佔用 {bdir} (shell cwd 勿停在該目錄內) 後重跑; lane 鎖保留未動",
               file=sys.stderr)
         return 1
     print(f"歸檔: {dest}")
 
-    active = os.path.join(briefs, "_active.yaml")
-    if os.path.isfile(active):
-        content = open(active, encoding="utf-8").read()
+    lock = os.path.join(briefs, "_active", f"{a.brief_id}.yaml")
+    legacy = os.path.join(briefs, "_active.yaml")
+    if os.path.isfile(lock):
+        os.remove(lock)
+        print(f"_active/{a.brief_id}.yaml 已刪 (lane 鎖清除)")
+    elif os.path.isfile(legacy):
+        content = open(legacy, encoding="utf-8").read()
         if f"brief_id: {a.brief_id}" in content:
-            os.remove(active)
-            print("_active.yaml 已刪 (brief_id 相符)")
+            os.remove(legacy)
+            print("_active.yaml (legacy 單檔) 已刪 (brief_id 相符)")
         else:
-            print(f"WARN _active.yaml 的 brief_id 非 {a.brief_id}——保留不刪 (可能屬另一 brief)", file=sys.stderr)
+            print(f"WARN legacy _active.yaml 的 brief_id 非 {a.brief_id}——保留不刪 (可能屬另一 brief)",
+                  file=sys.stderr)
     else:
-        print("_active.yaml 不存在 (無鎖可清)")
+        print("lane 鎖不存在 (無鎖可清)")
     if husk:
         print(f"WARN 源目錄殘骸未清 (被其他程序佔用; 歸檔副本已完整): 佔用釋放後手動 `rmdir {bdir}`",
               file=sys.stderr)

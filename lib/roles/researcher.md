@@ -38,7 +38,7 @@ worktree: forbidden
 
 **Forbidden**：
 - 任何 source code 寫入
-- main 管理檔（_tree.yaml / _manifest.md / _active.yaml）
+- main 管理檔（_tree.yaml / _manifest.md / briefs/_active/ 內任何 lock）
 - .claude/skills/ / .framework/codex/ / .framework/memory/**（不直寫）
 - 其他 sub-brief stage 目錄
 

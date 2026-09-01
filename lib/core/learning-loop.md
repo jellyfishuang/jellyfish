@@ -42,7 +42,7 @@ Step 4. 使用者批准
   ↓
 Step 5. Main 寫 memory / codex / skill（依批准結果）
   ↓
-歸檔 + 解鎖 _active.yaml
+歸檔 + 解鎖（刪本 lane 的 _active/{brief_id}.yaml）
 ```
 
 ### 3.1 強制執行規則（不可省略）
@@ -370,7 +370,9 @@ Append-only。淘汰是顯式 review，不能 main 自決悄悄改。
 
 ## 12. 給接手 agent 的提醒
 
-- **學習迴圈是 brief 結束的最後一步**：寫完才解 _active.yaml lock
+- **學習迴圈是 brief 結束的最後一步**：寫完才解本 lane 的 lock（_active/{brief_id}.yaml）
+- **多 lane 並行時 lessons/patterns append 前必重讀檔尾**：兩 lane 同時收尾可能交錯 append 同一
+  `lessons/{cat}.md`——寫前重讀取得最新 L{N} 編號與檔尾內容再 append，避免 lost-update / 編號重複
 - **使用者疲勞時可全 yes-all**：但不要替使用者自決
 - **Codex 寫入要慎重**：confidence 影響後續 brief；low 是好的預設
 - **Patterns 30 條上限是經驗值**：超過後查找成本與益處不成比例

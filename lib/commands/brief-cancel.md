@@ -1,17 +1,17 @@
 ---
 name: brief-cancel
-description: 取消當前 active brief（含 worktree / lock 處置）
+description: 取消指定 lane 的 active brief（含 worktree / lock 處置）
 allowed-tools: Read, Write, Edit, Bash, Glob
 ---
 
 # /brief-cancel
 
-取消當前 active brief。
+取消一條 lane 的 active brief。
 
 ## 用法
 
 ```
-/brief-cancel
+/brief-cancel [brief_id]        # 無參數走解析規則（本 session 的 brief → 唯一 lock → 列清單問）
 /brief-cancel --keep-worktree   # 保留 worktree（預設保留，此 flag 是顯式宣告）
 /brief-cancel --remove-worktree # 取消時順便清 worktree（謹慎用）
 ```
@@ -19,8 +19,10 @@ allowed-tools: Read, Write, Edit, Bash, Glob
 ## 行為
 
 ```
-1. Read .framework/briefs/_active.yaml
-2. 若無 active brief → 顯示「無 active brief」退出
+1. 解析 brief_id（本 session 正在跑的 brief → registry 唯一 lock → 多個則列清單要求指定），
+   Read .framework/briefs/_active/{brief_id}.yaml
+2. 若無任何 active lane → 顯示「無 active brief」退出
+   （取消非本 session 持有、且 heartbeat 還新的 lane → 額外警告「該 lane 可能有 session 在跑」）
 3. 顯示確認：
    「即將取消 brief: {brief_id}
     當前狀態：
@@ -31,7 +33,7 @@ allowed-tools: Read, Write, Edit, Bash, Glob
       - 寫 .framework/briefs/{brief_id}/CANCELLED 標記
       - 跑簡短學習迴圈（僅寫 sessions）
       - 預設保留 worktree（後續可手動清）
-      - 解 _active.yaml lock
+      - 刪本 lane 的 lock（_active/{brief_id}.yaml；他 lane 不受影響）
 
     確定取消？(y/N)」
 4. y →
@@ -50,7 +52,7 @@ allowed-tools: Read, Write, Edit, Bash, Glob
         git worktree remove {path}
    e. 若預設（keep）：
       留 worktree + 寫 WORKTREE_ABANDONED.md 標記（如 14d 規則）
-   f. 刪 _active.yaml
+   f. 刪 _active/{brief_id}.yaml
    g. 顯示「✓ Brief 已取消」
 5. N → 退出
 ```
@@ -96,15 +98,15 @@ for each worktree:
 | 狀況 | 處理 |
 |---|---|
 | Worktree remove 失敗（有 uncommitted changes） | 警告 + 預設 keep；提示使用者手動 commit / stash 後再清 |
-| _active.yaml 損毀 | 提示使用者用 /framework-unlock |
+| lock 檔損毀 | 提示使用者用 /framework-unlock {brief_id} |
 
 ## 與其他指令對比
 
 | 指令 | 用途 | 保留進度？ |
 |---|---|---|
-| `/brief-cancel` | 明示取消當前 | 是（brief 目錄保留 + sessions 摘要） |
-| `/framework-recover` | 從中斷接續 | 是 |
-| `/framework-unlock` | 強制解 lock | 是（brief 目錄保留但無 _active.yaml） |
+| `/brief-cancel [id]` | 明示取消指定 lane | 是（brief 目錄保留 + sessions 摘要） |
+| `/framework-recover [id]` | 從中斷接續指定 lane | 是 |
+| `/framework-unlock <id>` | 強制解指定 lane 的 lock | 是（brief 目錄保留但無 lock） |
 | `rm .framework/briefs/{id}` | 徹底清 | 否 |
 
 `/brief-cancel` 是「**正常 cancel**」，比 unlock 乾淨：寫 CANCELLED 標記、跑簡短學習迴圈、有取消理由紀錄。

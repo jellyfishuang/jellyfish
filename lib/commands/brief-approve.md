@@ -11,19 +11,33 @@ allowed-tools: Read, Write, Edit, Glob, Grep, Task
 ## 用法
 
 ```
-/brief-approve              # 批准當前 active brief
+/brief-approve [brief_id]   # 批准指定 brief；無參數走解析規則
 /brief-approve --comment "..."  # 帶批准備註（記錄在 _manifest.md）
 ```
 
 ## 前置條件
 
-- 有 active brief（`.framework/briefs/_active.yaml` 存在）
+- 目標 brief 的 lock 存在（`.framework/briefs/_active/{brief_id}.yaml`）
 - 該 brief 處於 `awaiting_approval` state（Explore Step 6）
+
+## Brief 解析規則（無 brief_id 參數時，多 lane 共通）
+
+```
+1. 本 session 對話中正在處理的 brief → 用它
+2. registry（_active/*.yaml）只有一個 lock → 用它
+3. 多個 → 列 lane 清單要求指定 brief_id
+```
 
 ## 行為
 
 ```
-1. 讀 _active.yaml 取 brief_id
+1. 解析 brief_id（上節規則），讀 _active/{brief_id}.yaml
+1.5 Scope 收斂重驗（two-phase lock，batch-lock §2.3）：
+   - 取 plan.md + 各 sub-brief 的 affected_repos 聯集（權威值）
+   - 跑 scope_check.py --overlap <聯集逗號串> --self {brief_id}
+   - 通過 → 更新 lock 的 affected_repos = 聯集、scope_status = confirmed
+   - 撞到（brief-new 預估錯 / 兩鎖之間別的 lane 被 admit）→ 升級使用者：
+     等待衝突 lane / 改 plan 避開該 repo / 取消一方——收斂通過前不得進 Execute
 2. 讀 _tree.yaml.nodes.{brief_id}.state
 3. 若 state != awaiting_approval → 顯示錯誤：
    「當前 brief 處於 {state} 狀態，無法批准。
@@ -54,7 +68,7 @@ allowed-tools: Read, Write, Edit, Glob, Grep, Task
       for sub_id in 新建的 sub-brief id list:
         - git worktree add .framework/worktrees/brief--{sub_id} -b brief/{sub_id}
         - 寫 _tree.yaml.nodes.{sub_id}.worktree = .framework/worktrees/brief--{sub_id}
-   e. 更新 _active.yaml.phase = executing
+   e. 更新 _active/{brief_id}.yaml 的 phase = executing
    f. 更新 _manifest.md（含使用者 comment + 批准時間）
    g. 顯示：「Plan 已批准，進入 Execute 階段。Sub-briefs: {list}」
 5. Main 進入 Execute 主迴圈（control-plane.md 第 5 節）
@@ -84,7 +98,8 @@ Main 會：
 
 | 狀況 | 處理 |
 |---|---|
-| 無 active brief | 顯示「無 active brief。/brief-new 開新的」 |
+| 無任何 active lane | 顯示「無 active brief。/brief-new 開新的」 |
+| Scope 收斂重驗撞鎖 | 行為 1.5：升級使用者，收斂通過前不進 Execute |
 | brief state != awaiting_approval | 顯示當前 state，提示對應動作 |
 | 沒讀到 plan.md | 顯示錯誤：「plan.md 不存在，可能 Explore 還在跑」 |
 | Worktree 建立失敗（git 錯誤） | 回滾、顯示具體 git 錯誤、不更新 state |

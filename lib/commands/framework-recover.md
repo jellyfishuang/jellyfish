@@ -1,17 +1,17 @@
 ---
 name: framework-recover
-description: 從中斷的 brief 接續（殭屍 _active.yaml / 4 輪上限 failed sub-brief）
+description: 從中斷的 lane 接續（殭屍 lock / 4 輪上限 failed sub-brief）
 allowed-tools: Read, Write, Edit, Bash, Glob, Grep, Task
 ---
 
 # /framework-recover
 
-從中斷的 brief 接續。對應 `core/batch-lock.md` 第 4 節 + `core/escalation-rules.md` 第 4.3 節。
+從中斷的 lane 接續。對應 `core/batch-lock.md` 第 4 節 + `core/escalation-rules.md` 第 4.3 節。
 
 ## 用法
 
 ```
-/framework-recover
+/framework-recover [brief_id]                # 無參數：registry 唯一 lock → 用它；多個 → 列 lane 清單要求指定
 /framework-recover --pid                     # 強制取代既有 pid（多 session 偵測時）
 /framework-recover --sub-brief <sub_id>      # 僅針對特定 sub-brief
 ```
@@ -19,22 +19,24 @@ allowed-tools: Read, Write, Edit, Bash, Glob, Grep, Task
 ## 行為
 
 ```
-1. 偵測 _active.yaml：
-   - 不存在 → 顯示「無 active brief，無需 recover。要查歷史用 /brief-status」
+1. 解析目標 lane → 偵測 _active/{brief_id}.yaml：
+   - registry 空 → 顯示「無 active brief，無需 recover。要查歷史用 /brief-status」
+     （偵測到 legacy 單檔 _active.yaml → 提示先搬遷至 registry，batch-lock §8）
    - 存在但 pid == 當前 main pid → 顯示「當前 main session 即為主，無需 recover」
-   - 存在且 pid != 當前 → 進入 recover 流程
+   - 存在且 pid != 當前 → 進入 recover 流程（recover 後本 session 持有該 lane；
+     若其 last_heartbeat 還新，警告「該 lane 可能有 session 在跑」需使用者確認）
 2. Read 對應 _tree.yaml + _manifest.md + _suggestions.json
-2.5 若 _active.yaml 有 autonomous_mandate 或 briefs/{id}/_mandate.json 存在：
+2.5 若該 lock 有 autonomous_mandate 或 briefs/{id}/_mandate.json 存在：
     a. 跑 `python .framework/scripts/mandate_check.py .framework/briefs/{id}`（驗結構）
     b. status=active → 顯示 mandate 摘要（auto_advance / pre_authorized / do_not_start / 已推進到哪）
        → 問使用者「繼續此授權自主續跑 / 收回改互動模式（標 consumed）」
     c. status=consumed|revoked → 僅列為歷史 trail，不影響 recover 決策
     d. 驗證 exit 2（結構壞）→ 顯示違規明細，視同無 mandate（互動模式），提醒使用者重簽
-    e. 舊制散文 mandate（_active.yaml 內 prose block）→ 唸給使用者、建議轉簽 _mandate.json；不自動轉譯
+    e. 舊制散文 mandate（lock 內 prose block）→ 唸給使用者、建議轉簽 _mandate.json；不自動轉譯
 3. 分析 in-flight 節點（state ∈ {executing, reviewing, paused, failed}）
 4. 對每節點顯示給使用者並收答
 5. 依答更新 _tree.yaml
-6. 更新 _active.yaml.pid = 當前、last_heartbeat = now
+6. 更新 _active/{brief_id}.yaml 的 pid = 當前、last_heartbeat = now
 7. 進 Execute / Review / Learning 主迴圈接續
 ```
 
@@ -71,7 +73,7 @@ Sub-brief .c 處置？
 
 ──────────────────────────────────────────
 ✓ 已更新 _tree.yaml
-✓ 已更新 _active.yaml（pid 取代為當前）
+✓ 已更新 _active/{brief_id}.yaml（pid 取代為當前）
 
 繼續 Execute...
 ```

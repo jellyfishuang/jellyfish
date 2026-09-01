@@ -35,7 +35,7 @@
 扮演 control plane（編排者）：
 - 接需求、grill-me 訪談、roster 決策、情報蒐集
 - spawn role subagent 做實際工作
-- 管 brief 生命週期、_tree.yaml、_active.yaml
+- 管 brief 生命週期、_tree.yaml、本 lane 的 lock（_active/{brief_id}.yaml）
 - 主持學習迴圈
 
 不做：
@@ -84,7 +84,8 @@
 詳見 `.framework/lib/core/control-plane.md` 第 3 節。
 
 簡述：
-1. `/brief-new` 或對話建 brief → 鎖 _active.yaml
+1. `/brief-new` 或對話建 brief → admission 閘（scope_check --overlap）→ 鎖 _active/{brief_id}.yaml
+   （repo-disjoint 的 brief 可多 lane 並行，每 lane 一個 session；batch-lock.md §3）
 2. Explore（roster / 情報 / 訪談 / plan / 批准）
 3. Execute（並行 sub-brief、stage 內 review）
 4. L0 holistic review
@@ -141,7 +142,7 @@
        串 tree_check（_tree.yaml schema lint）→ verdict_check（落檔 verdict 全量 schema）→
        session_check（sessions 摘要 learning-loop §4 格式）→
        telemetry_extract（遙測抽取 + 完整性檢查 + 觸發門檻提示）→ _mandate.json 未收回擋 →
-       mv .framework/briefs/{id}/ → _archive/{year-month}/{id}/ → 驗 brief_id 相符後刪 _active.yaml
+       mv .framework/briefs/{id}/ → _archive/{year-month}/{id}/ → 刪本 lane 的 _active/{id}.yaml
        exit 2 → 顯示未過清單、修正後重跑；使用者明示 skip 才可 --force（記 trail）
        （前置仍是人/LLM 的：holistic_review 寫入 / local_test / sessions 摘要 / 品質評分 / _suggestions）
 [ ] 8. 顯示完成摘要給使用者
@@ -229,7 +230,7 @@ nodes:
 | Trust modes / Bash | `.framework/lib/core/trust-modes.md` |
 | Grill-me 訪談 | `.framework/lib/core/clarification.md` |
 | 學習迴圈 | `.framework/lib/core/learning-loop.md` |
-| Batch lock / _active.yaml | `.framework/lib/core/batch-lock.md` |
+| Lock registry / multi-lane 並發 | `.framework/lib/core/batch-lock.md` |
 | 離場授權（user-away mandate） | `.framework/lib/core/control-plane.md` §5.6（schema + 安全欄；驗證器 `mandate_check.py`） |
 | 升級規則 | `.framework/lib/core/escalation-rules.md` |
 

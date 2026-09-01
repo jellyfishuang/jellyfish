@@ -18,7 +18,7 @@ allowed-tools: Read, Write, Edit, Bash, Glob, WebFetch, Task
 ## 前置條件
 
 - 已 init
-- 無 active brief（若有，提示如 /brief-new 一樣）
+- Admission 閘通過（同 /brief-new Step 2.5；inbox 檔已宣告 affected_repos 時直接以其為預估值跑 scope_check.py --overlap）
 - GH 整合：`gh` CLI 已安裝（用 `gh issue view`）
 
 ## 行為（GitHub Issue）
@@ -62,7 +62,7 @@ allowed-tools: Read, Write, Edit, Bash, Glob, WebFetch, Task
       - imported_from: github-issue
       - source_url: {url}
       ```
-   d. 後續流程同 /brief-new（建 _active.yaml / _tree.yaml / 進 Explore）
+   d. 後續流程同 /brief-new（建 _active/{brief_id}.yaml / _tree.yaml / 進 Explore）
 6. edit → 把 body 填入互動式編輯模式（main 詢問補充 / 修改）
 ```
 
@@ -103,7 +103,7 @@ allowed-tools: Read, Write, Edit, Bash, Glob, WebFetch, Task
 | gh CLI 未安裝 | 提示安裝步驟 + 退出 |
 | Issue 不存在 / 無權限 | 顯示 gh 錯誤訊息 |
 | Local md 不存在 | 顯示路徑錯誤 |
-| 已有 active brief | 同 /brief-new 處置（等 / 取消 / 升級為 sub-brief） |
+| Admission 閘撞鎖 | 同 /brief-new 四選項（等待/排 inbox、取消衝突 lane、升級為其 sub-brief、改 scope） |
 
 ## 為什麼匯入 vs 對話
 

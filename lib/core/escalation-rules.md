@@ -86,7 +86,7 @@ Sub-brief {sub_id} 計畫進入 Execute，但偵測到高風險動作：
 
 | 條件 | 觸發 |
 |---|---|
-| `_active.yaml` last_heartbeat > 1 hour 後 main 重啟 | batch-lock.md：殭屍恢復提示 |
+| 某 lane 的 `_active/{brief_id}.yaml` last_heartbeat > 1 hour 後 main 重啟 | batch-lock.md §4：該 lane 殭屍恢復提示 |
 | 同 sub-brief 累積 ≥ 3 次 ambiguity 升級 L0 | clarification.md §6 step 5 |
 | Plan reviewer 寫的 plan 與舊 plan diff < 5% | review-loop：plan 重做沒實質變化警告 |
 | Tree 結構與 _tree.yaml 不一致（手動改） | e2r-tree §6.5 |
@@ -166,7 +166,7 @@ Sub-brief {sub_id} 計畫進入 Execute，但偵測到高風險動作：
 使用者：先 hold，我晚點看
 ```
 
-→ _active.yaml.phase = on_hold；不繼續，但 lock 保持。使用者可隨時用 `/framework-recover` 接續。
+→ 本 lane lock（`_active/{brief_id}.yaml`）phase = on_hold；不繼續，但 lock 保持（scope 續占，他 lane 不得侵入）。使用者可隨時用 `/framework-recover {brief_id}` 接續。
 
 ---
 

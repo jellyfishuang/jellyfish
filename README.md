@@ -33,7 +33,7 @@
 | **Trust Mode** | `strict` / `standard` / `sandbox` 三檔，決定 Bash 白名單寬嚴與依賴安裝策略。 |
 | **Memory** | `lessons`（行為糾正）/ `patterns`（成功 playbook）/ `sessions`（brief 歷史）/ `architecture`（專案事實）/ `preferences`（跨 brief 偏好）。 |
 
-設計受 multi-agent 組織研究啟發：可攜身份「Talent」與 Explore-Execute-Review 遞迴探索取自 **OneManCompany**（arXiv:2604.22446）；結構化記憶儲存的概念取自 **SLIDERS**（arXiv:2604.22294，目前暫緩、僅預留 frontmatter 接口）。框架在此基礎上刻意收斂為 Claude-only、單 active brief、檔案優先的形態。
+設計受 multi-agent 組織研究啟發：可攜身份「Talent」與 Explore-Execute-Review 遞迴探索取自 **OneManCompany**（arXiv:2604.22446）；結構化記憶儲存的概念取自 **SLIDERS**（arXiv:2604.22294，目前暫緩、僅預留 frontmatter 接口）。框架在此基礎上刻意收斂為 Claude-only、每 scope 單 active brief（repo-disjoint 可 multi-lane 並行）、檔案優先的形態。
 
 ---
 
@@ -68,7 +68,7 @@
 ```
 使用者：/brief-new "<需求描述>"
   ↓
-Main：偵測 active brief（已有則拒）→ 建 brief
+Main：admission 閘（scope_check --overlap：與各 lane / 無主 dirty 無交集才准）→ 建 brief + lane lock
   ↓
 [Explore L0]
   1. Roster 決策（main 選 role，顯示給使用者可改）
@@ -106,7 +106,7 @@ Main：偵測 active brief（已有則拒）→ 建 brief
 │   │   ├── e2r-tree.md           # _tree.yaml manifest 規範
 │   │   ├── review-loop.md        # review 輪次與回退規則
 │   │   ├── typed-interfaces.md   # verdict / producer output schema
-│   │   ├── batch-lock.md         # _active.yaml 語意
+│   │   ├── batch-lock.md         # lock registry 語意（multi-lane）
 │   │   ├── clarification.md      # grill-me 訪談規則
 │   │   ├── trust-modes.md        # 三檔信任模式 + permissions sync
 │   │   ├── soul-schema.md        # Role / Skill / Codex schema
@@ -188,7 +188,7 @@ your-project/
 │   ├── lib/              # 出貨層（你放進來的）
 │   ├── codex/{role}.md   # 各 role 的專案領域知識
 │   ├── memory/           # MEMORY.md / architecture / preferences / lessons / patterns / sessions
-│   ├── briefs/           # _active.yaml / inbox / _archive / {brief_id}/
+│   ├── briefs/           # _active/（lock registry）/ inbox / _archive / {brief_id}/
 │   ├── pipeline.yaml     # stage DAG
 │   └── .initialized      # init 紀錄（recipe / customizations / framework_version）
 ├── .claude/
@@ -226,10 +226,10 @@ your-project/
 | 指令 | 用途 |
 |---|---|
 | `/brief-new` | 開新 brief（短訪談） |
-| `/brief-status` | active brief 進度 + 近期完成 |
+| `/brief-status` | 跨 lane dashboard（等你的關卡 / 產線占用）+ 近期完成 |
 | `/brief-approve` | 批准當前 plan（L0 gate） |
 | `/brief-amend <sub_id> "..."` | 對已完成 sub-brief 做輕量修訂 |
-| `/brief-cancel` | 取消當前 active brief |
+| `/brief-cancel [id]` | 取消指定 lane 的 brief |
 | `/brief-reopen <id>` | 重啟已歸檔 brief |
 | `/brief-import <url>` | 從 GitHub Issue 匯入 |
 
@@ -244,7 +244,7 @@ your-project/
 | `/framework-pipeline-edit` | 改 pipeline.yaml |
 | `/framework-trust-set <mode>` | 切 trust mode（含 permissions sync） |
 | `/framework-permissions-sync` | 強制 re-sync 權限 |
-| `/framework-recover` · `/framework-unlock` | 中斷恢復 / 強制清 `_active.yaml` |
+| `/framework-recover [id]` · `/framework-unlock <id>` | 中斷恢復指定 lane / 強制清指定 lane 的 lock |
 | `/framework-learn` | 補處理歸檔 brief 的學習沉澱（不需另開 brief） |
 | `/framework-recall <主題>` | 唯讀查外部 KB 參考其他 repo（需 opt-in 連接 KB） |
 
@@ -318,7 +318,8 @@ Recipe 是起點不是鎖定——複製進專案後可任意增刪 role、改 p
 - 可執行 shell script（純文件）
 - Producer 自主裝依賴 / 自主寫 skill / codex
 - 框架預定義固定整包 archetype
-- 多 process / 多 session 同時跑（「multi-agent」= 單一 main session 內 spawn 多 subagent，單 active brief）
+- 單 session 同時管多個 root brief（「multi-agent」= 單一 main session 內 spawn 多 subagent；**2026-09-01 起支援 multi-lane**：repo-disjoint 的 brief 可並行，每 lane 一個獨立 session，見 `lib/core/batch-lock.md`）
+- 同 repo 的兩個 brief 並行（phase 2 才考慮 per-repo worktree 隔離）
 
 ---
 

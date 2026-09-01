@@ -34,6 +34,18 @@ SEVERITY_PAT = re.compile(r"\b(BLOCKER|CRITICAL|MAJOR|MINOR)\b", re.IGNORECASE)
 SEVERITY_ORDER = ["BLOCKER", "CRITICAL", "MAJOR", "MINOR"]
 
 
+def is_waiver_file(fname):
+    """gate 豁免記錄 {gate}.waived.json: 使用者仲裁免跑某 gate 時落檔, 供完整性檢查認得。
+    只有使用者仲裁能產生; 內容須指名 arbitration 與依據。"""
+    return fname.endswith(".waived.json")
+
+
+def is_verdict_file(fname):
+    """本專案落檔慣例有兩種語序: {role}.verdict.{segment}.json 與 {role}.{segment}.verdict.json。
+    原本只認 .verdict.json 結尾, 前者整批逃過機械閘。"""
+    return fname.endswith(".json") and ".verdict." in fname
+
+
 def resolve_out(brief_dir, cli_out):
     if cli_out:
         return os.path.abspath(cli_out)
@@ -54,8 +66,10 @@ def sub_brief_of(relpath):
 
 
 def derive_gate(fname, sub_brief, data):
-    base = fname[: -len(".verdict.json")]
-    base = re.sub(r"\.round\d+$", "", base)
+    # 兩種語序都要收: {role}.verdict.{segment}.json 與 {role}.{segment}.verdict.json
+    base = fname[: -len(".json")] if fname.endswith(".json") else fname
+    base = base.replace(".verdict", "")
+    base = re.sub(r"\.round[0-9][\w-]*$", "", base)
     if base.lower().startswith("l0"):
         return "L0-holistic"
     if base.startswith("architecture-reviewer"):
@@ -70,7 +84,7 @@ def derive_gate(fname, sub_brief, data):
         if "plan" in stage:
             return "architecture-reviewer.plan"
         return "architecture-reviewer.impl" if sub_brief else "architecture-reviewer.plan"
-    return base
+    return base.split(".")[0]   # engineer.S4-fixes → engineer
 
 
 def top_severity(text):
@@ -81,14 +95,30 @@ def top_severity(text):
     return None
 
 
-def verdict_row(brief_id, relpath, fname, data):
+def normalize_checks(checks, relf, warnings):
+    """checks 的正規形狀是 list of dict。其他形狀只警告不中斷 (原本直接 AttributeError 炸掉整條歸檔管線)。"""
+    if checks is None:
+        return []
+    if isinstance(checks, dict):
+        warnings.append(f"{relf}: checks 是 object 形狀 (正規形狀為 list of dict), 無法抽 findings, 已略過")
+        return []
+    if not isinstance(checks, list):
+        warnings.append(f"{relf}: checks 型別為 {type(checks).__name__} (正規形狀為 list of dict), 已略過")
+        return []
+    items = [c for c in checks if isinstance(c, dict)]
+    if len(items) != len(checks):
+        warnings.append(f"{relf}: checks 內有 {len(checks) - len(items)} 個非 dict 項, 該些項已略過")
+    return items
+
+
+def verdict_row(brief_id, relpath, fname, data, warnings):
     sub = sub_brief_of(relpath)
     gate = derive_gate(fname, sub, data)
     actor = data.get("actor") or {}
     m = re.search(r"\.round(\d+)\.verdict\.json$", fname)
     rnd = int(m.group(1)) if m else actor.get("round") or 1
     findings = []
-    for c in data.get("checks") or []:
+    for c in normalize_checks(data.get("checks"), relpath, warnings):
         if c.get("result") == "fail":
             ev = str(c.get("evidence") or "")[:300]
             findings.append({"desc": c.get("name") or "", "evidence": ev,
@@ -112,7 +142,7 @@ def user_review_row(brief_id, relpath, data):
 
 
 def scan(brief_dir):
-    rows, missing = [], []
+    rows, missing, warnings = [], [], []
     brief_id = os.path.basename(os.path.normpath(brief_dir))
     sub_has_code, sub_has_required, sub_has_user = set(), set(), set()
     root_has_plan = os.path.isfile(os.path.join(brief_dir, "plan.md"))
@@ -128,17 +158,31 @@ def scan(brief_dir):
         for fname in filenames:
             fpath = os.path.join(dirpath, fname)
             relf = os.path.join(rel, fname)
-            if fname.endswith(".verdict.json"):
+            if is_verdict_file(fname):
                 try:
                     data = json.load(open(fpath, encoding="utf-8"))
                 except (OSError, ValueError) as e:
                     print(f"WARN 略過壞檔 {relf}: {e}", file=sys.stderr)
                     continue
-                row = verdict_row(brief_id, relf, fname, data)
+                row = verdict_row(brief_id, relf, fname, data, warnings)
                 rows.append(row)
                 if row["gate"] == REQUIRED_SUB_GATE and row["sub_brief"]:
                     sub_has_required.add(row["sub_brief"])
                 if row["gate"] == REQUIRED_PLANNING_GATE and not row["sub_brief"]:
+                    root_has_planning_verdict = True
+            elif is_waiver_file(fname):
+                try:
+                    data = json.load(open(fpath, encoding="utf-8"))
+                except (OSError, ValueError) as e:
+                    print(f"WARN 略過壞檔 {relf}: {e}", file=sys.stderr)
+                    continue
+                g, wsub = data.get("gate"), sub_brief_of(relf)
+                warnings.append(
+                    f"{relf}: {g} 由使用者仲裁 {data.get('arbitration') or '?'} 豁免"
+                    f" ({str(data.get('reason') or '')[:80]})")
+                if g == REQUIRED_SUB_GATE and wsub:
+                    sub_has_required.add(wsub)
+                if g == REQUIRED_PLANNING_GATE and not wsub:
                     root_has_planning_verdict = True
             elif fname == "user_review.json":
                 try:
@@ -151,7 +195,6 @@ def scan(brief_dir):
                 if row["sub_brief"]:
                     sub_has_user.add(row["sub_brief"])
 
-    warnings = []
     for sub in sorted(sub_has_code):
         if sub not in sub_has_required:
             missing.append(f"sub-briefs/{sub}: 缺 {REQUIRED_SUB_GATE} verdict (*.verdict.json)")
